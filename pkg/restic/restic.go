@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"bytetrade.io/web3os/uploader-sdk/pkg/util"
-	"bytetrade.io/web3os/uploader-sdk/pkg/util/cmd"
-	"bytetrade.io/web3os/uploader-sdk/pkg/util/logger"
+	"bytetrade.io/web3os/backups-sdk/pkg/util"
+	"bytetrade.io/web3os/backups-sdk/pkg/util/cmd"
+	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 )
@@ -63,6 +63,7 @@ type Restic interface {
 	NewContext()
 	RefreshEnv(envs map[string]string)
 	GetSnapshot(snapshotId string) (*Snapshot, error)
+	GetSnapshots() ([]*Snapshot, error)
 	Cancel()
 }
 
@@ -475,6 +476,75 @@ func (r *resticManager) GetSnapshot(snapshotId string) (*Snapshot, error) {
 	return summary[0], nil
 }
 
+func (r *resticManager) GetSnapshots() ([]*Snapshot, error) {
+	var restoreCtx, cancel = context.WithCancel(r.ctx)
+	defer cancel()
+	opts := cmd.CommandOptions{
+		Path: r.bin,
+		Args: []string{
+			"snapshots",
+			PARAM_JSON_OUTPUT,
+			PARAM_INSECURE_TLS,
+		},
+		Envs: r.envs,
+	}
+
+	c := cmd.NewCommand(restoreCtx, opts)
+
+	var summary []*Snapshot
+	var errorMsg RESTIC_ERROR_MESSAGE
+
+	go func() {
+		for {
+			select {
+			case res, ok := <-c.Ch:
+				if !ok {
+					return
+				}
+				if res == nil || len(res) == 0 {
+					continue
+				}
+
+				var msg = string(res)
+				logger.Debugf("[restic] snapshots %s message: %s", r.name, msg)
+				if strings.Contains(msg, "Fatal: ") {
+					switch {
+					case strings.Contains(msg, ERROR_MESSAGE_SNAPSHOT_NOT_FOUND.Error()):
+						errorMsg = ERROR_MESSAGE_SNAPSHOT_NOT_FOUND
+						c.Cancel()
+						return
+					default:
+						errorMsg = RESTIC_ERROR_MESSAGE(msg)
+						c.Cancel()
+						return
+					}
+				}
+				if err := json.Unmarshal(res, &summary); err != nil {
+					errorMsg = RESTIC_ERROR_MESSAGE(err.Error())
+					c.Cancel()
+					return
+				}
+			case <-r.ctx.Done():
+				return
+			}
+		}
+	}()
+
+	_, err := c.Run()
+	if err != nil {
+		return nil, err
+	}
+	if errorMsg != "" {
+		return nil, fmt.Errorf(errorMsg.Error())
+	}
+
+	if summary == nil || len(summary) == 0 {
+		return nil, fmt.Errorf("snapshots not found")
+	}
+
+	return summary, nil
+}
+
 func (r *resticManager) Restore(snapshotId string, uploadPath string, target string) (*RestoreSummaryOutput, error) {
 	var restoreCtx, cancel = context.WithCancel(r.ctx)
 	defer cancel()
@@ -538,7 +608,6 @@ func (r *resticManager) Restore(snapshotId string, uploadPath string, target str
 					switch {
 					case math.Abs(status.PercentDone-0.0) < tolerance:
 						if !started {
-							logger.Infof(PRINT_RESTORE_START_MESSAGE, status.TotalFiles, util.FormatBytes(status.TotalBytes))
 							started = true
 						}
 					case math.Abs(status.PercentDone-1.0) < tolerance:
@@ -609,5 +678,5 @@ func (r *resticManager) fileNameTidy(f []string, prefix string) []string {
 }
 
 func (r *resticManager) withTag(name string) []string {
-	return []string{"--tag", fmt.Sprintf("name=%s", name)}
+	return []string{"--tag", fmt.Sprintf("repo_name=%s", name)}
 }

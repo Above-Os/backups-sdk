@@ -3,63 +3,88 @@ package storage
 import (
 	"context"
 	"fmt"
+	"time"
 
-	"bytetrade.io/web3os/uploader-sdk/pkg/restic"
-	"bytetrade.io/web3os/uploader-sdk/pkg/util"
-	"bytetrade.io/web3os/uploader-sdk/pkg/util/logger"
+	"bytetrade.io/web3os/backups-sdk/pkg/restic"
+	"bytetrade.io/web3os/backups-sdk/pkg/util"
+	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
 )
 
 type StorageClient struct {
-	Name                 string
-	SnapshotId           string
-	UserName             string
-	CloudName            string
-	CloudRegion          string
-	Password             string
-	UploadPath           string
-	DownloadPath         string
-	CloudApiMirror       string
-	TokenDuration        string
-	LimitUploadRate      string
-	LimitDownloadRate    string
-	StorageTokenDuration string
+	RepoName          string
+	SnapshotId        string
+	OlaresId          string
+	BackupType        string
+	Endpoint          string
+	AccessKeyId       string
+	SecretAccessKey   string
+	BackupToLocalPath string
+
+	UploadPath        string
+	TargetPath        string
+	CloudApiMirror    string
+	TokenDuration     string
+	LimitUploadRate   string
+	LimitDownloadRate string
 }
 
 type StorageResponse struct {
-	Summary        *restic.SummaryOutput
-	RestoreSummary *restic.RestoreSummaryOutput
-	Error          error
+	Summary          *restic.SummaryOutput
+	RestoreSummary   *restic.RestoreSummaryOutput
+	SnapshotsSummary []*restic.Snapshot
+	Error            error
 }
 
-func (s *StorageClient) UploadToStorage(ctx context.Context, exitCh chan<- *StorageResponse) {
+type BackupsOperate string
+
+var (
+	OperateBackup    BackupsOperate = "backup"
+	OperateRestore   BackupsOperate = "restore"
+	OperateSnapshots BackupsOperate = "snapshots"
+)
+
+func (o BackupsOperate) IsBackup() bool {
+	return o == OperateBackup
+}
+
+func (s *StorageClient) BackupToStorage(ctx context.Context, exitCh chan<- *StorageResponse) {
 	var olaresSpace = &OlaresSpace{
-		UserName:       s.UserName,
-		CloudName:      s.CloudName,
-		CloudRegion:    s.CloudRegion,
-		UploadPath:     s.UploadPath,
-		CloudApiMirror: s.CloudApiMirror,
-		Duration:       s.StorageTokenDuration,
+		RepoName:           s.RepoName,
+		OlaresId:           s.OlaresId,
+		BackupType:         s.BackupType,
+		Endpoint:           s.Endpoint,
+		AccessKeyId:        s.AccessKeyId,
+		SecretAccessKey:    s.SecretAccessKey,
+		BackupToLocalPath:  s.BackupToLocalPath,
+		Path:               s.UploadPath,
+		CloudApiMirror:     s.CloudApiMirror,
+		BackupsOperate:     OperateBackup,
+		OlaresSpaceSession: new(OlaresSpaceSession),
 	}
 
 	if err := olaresSpace.SetAccount(); err != nil {
 		exitCh <- &StorageResponse{Error: fmt.Errorf("get account error: %v", err)}
 		return
 	}
+	if err := olaresSpace.EnterPassword(); err != nil {
+		exitCh <- &StorageResponse{Error: err}
+		return
+	}
 
 	var summary *restic.SummaryOutput
 
-	if err := olaresSpace.RefreshToken(true); err != nil {
+	if err := olaresSpace.RefreshToken(false); err != nil { // backup
 		exitCh <- &StorageResponse{Error: err}
 		return
 	}
 
 	for {
-		olaresSpace.SetRepoUrl(s.Name, s.Password)
+		olaresSpace.SetRepoUrl()
 		olaresSpace.SetEnv()
 
-		logger.Infof("get token, data: %s", util.ToJSON(olaresSpace))
+		logger.Debugf("get token, data: %s", util.Base64encode([]byte(util.ToJSON(olaresSpace))))
 
-		r, err := restic.NewRestic(ctx, s.Name, s.UserName, olaresSpace.GetEnv(), &restic.Option{LimitUploadRate: s.LimitUploadRate})
+		r, err := restic.NewRestic(ctx, s.RepoName, s.OlaresId, olaresSpace.GetEnv(), &restic.Option{LimitUploadRate: s.LimitUploadRate})
 		if err != nil {
 			exitCh <- &StorageResponse{Error: err}
 			return
@@ -71,10 +96,11 @@ func (s *StorageClient) UploadToStorage(ctx context.Context, exitCh chan<- *Stor
 			logger.Debugf("restic init message: %s", err.Error())
 			if err.Error() == restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error() {
 				logger.Infof("olares space token expired, refresh")
-				if err := olaresSpace.RefreshToken(false); err != nil {
+				if err := olaresSpace.RefreshToken(false); err != nil { // backup
 					exitCh <- &StorageResponse{Error: fmt.Errorf("get token error: %v", err)}
 					return
 				}
+				time.Sleep(2 * time.Second)
 				continue
 			} else if err.Error() == restic.ERROR_MESSAGE_ALREADY_INITIALIZED.Error() {
 				logger.Infof("restic init skip")
@@ -93,12 +119,13 @@ func (s *StorageClient) UploadToStorage(ctx context.Context, exitCh chan<- *Stor
 			}
 		}
 
-		summary, err = r.Backup(s.Name, s.UploadPath, "")
+		logger.Infof("preparing to start backup, repo: %s", olaresSpace.OlaresSpaceSession.ResticRepo)
+		summary, err = r.Backup(s.RepoName, s.UploadPath, "")
 		if err != nil {
 			switch err.Error() {
 			case restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error():
 				logger.Infof("olares space token expired, refresh")
-				if err := olaresSpace.RefreshToken(false); err != nil {
+				if err := olaresSpace.RefreshToken(false); err != nil { // backup
 					exitCh <- &StorageResponse{Error: fmt.Errorf("get token error: %v", err)}
 					return
 				}
@@ -115,13 +142,18 @@ func (s *StorageClient) UploadToStorage(ctx context.Context, exitCh chan<- *Stor
 	exitCh <- &StorageResponse{Summary: summary}
 }
 
-func (s *StorageClient) Download(ctx context.Context, exitCh chan<- *StorageResponse) {
+func (s *StorageClient) RestoreFromStorage(ctx context.Context, exitCh chan<- *StorageResponse) {
 	var olaresSpace = &OlaresSpace{
-		UserName:       s.UserName,
-		CloudName:      s.CloudName,
-		CloudRegion:    s.CloudRegion,
-		CloudApiMirror: s.CloudApiMirror,
-		Duration:       s.StorageTokenDuration,
+		RepoName:           s.RepoName,
+		OlaresId:           s.OlaresId,
+		BackupType:         s.BackupType,
+		Endpoint:           s.Endpoint,
+		AccessKeyId:        s.AccessKeyId,
+		SecretAccessKey:    s.SecretAccessKey,
+		Path:               s.TargetPath,
+		CloudApiMirror:     s.CloudApiMirror,
+		BackupsOperate:     OperateRestore,
+		OlaresSpaceSession: new(OlaresSpaceSession),
 	}
 
 	if err := olaresSpace.SetAccount(); err != nil {
@@ -129,20 +161,25 @@ func (s *StorageClient) Download(ctx context.Context, exitCh chan<- *StorageResp
 		return
 	}
 
+	if err := olaresSpace.EnterPassword(); err != nil {
+		exitCh <- &StorageResponse{Error: err}
+		return
+	}
+
 	var summary *restic.RestoreSummaryOutput
 
-	if err := olaresSpace.RefreshToken(true); err != nil {
+	if err := olaresSpace.RefreshToken(false); err != nil { // restore
 		exitCh <- &StorageResponse{Error: fmt.Errorf("get token error: %v", err)}
 		return
 	}
 
 	for {
-		olaresSpace.SetRepoUrl(s.Name, s.Password)
+		olaresSpace.SetRepoUrl()
 		olaresSpace.SetEnv()
 
-		logger.Infof("get token, data: %s", util.ToJSON(olaresSpace))
+		logger.Debugf("get token, data: %s", util.Base64encode([]byte(util.ToJSON(olaresSpace))))
 
-		r, err := restic.NewRestic(ctx, s.Name, s.UserName, olaresSpace.GetEnv(), &restic.Option{LimitDownloadRate: s.LimitDownloadRate})
+		r, err := restic.NewRestic(ctx, s.RepoName, s.OlaresId, olaresSpace.GetEnv(), &restic.Option{LimitDownloadRate: s.LimitDownloadRate})
 		if err != nil {
 			exitCh <- &StorageResponse{Error: err}
 			return
@@ -157,16 +194,17 @@ func (s *StorageClient) Download(ctx context.Context, exitCh chan<- *StorageResp
 
 		logger.Infof("snapshot %s detail: %s", s.SnapshotId, util.ToJSON(snapshotSummary))
 
-		summary, err = r.Restore(s.SnapshotId, uploadPath, s.DownloadPath)
+		summary, err = r.Restore(s.SnapshotId, uploadPath, s.TargetPath)
 		if err != nil {
 			switch err.Error() {
 			case restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error():
 				logger.Infof("olares space token expired, refresh")
-				if err := olaresSpace.RefreshToken(false); err != nil {
+				if err := olaresSpace.RefreshToken(false); err != nil { // restore
 					exitCh <- &StorageResponse{Error: fmt.Errorf("get token error: %v", err)}
 					return
 				}
 				r.NewContext()
+				time.Sleep(2 * time.Second)
 				continue
 			default:
 				exitCh <- &StorageResponse{Error: err}
@@ -177,4 +215,54 @@ func (s *StorageClient) Download(ctx context.Context, exitCh chan<- *StorageResp
 	}
 
 	exitCh <- &StorageResponse{RestoreSummary: summary}
+}
+
+func (s *StorageClient) GetSnapshots(ctx context.Context, exitCh chan<- *StorageResponse) {
+	var olaresSpace = &OlaresSpace{
+		RepoName:           s.RepoName,
+		OlaresId:           s.OlaresId,
+		BackupType:         s.BackupType,
+		Endpoint:           s.Endpoint,
+		AccessKeyId:        s.AccessKeyId,
+		SecretAccessKey:    s.SecretAccessKey,
+		CloudApiMirror:     s.CloudApiMirror,
+		BackupsOperate:     OperateSnapshots,
+		OlaresSpaceSession: new(OlaresSpaceSession),
+	}
+
+	if err := olaresSpace.SetAccount(); err != nil {
+		exitCh <- &StorageResponse{Error: fmt.Errorf("get account error: %v", err)}
+		return
+	}
+
+	if err := olaresSpace.EnterPassword(); err != nil {
+		exitCh <- &StorageResponse{Error: err}
+		return
+	}
+
+	if err := olaresSpace.RefreshToken(false); err != nil { // snapshots
+		exitCh <- &StorageResponse{Error: fmt.Errorf("get token error: %v", err)}
+		return
+	}
+
+	// logger.Infof("get token, data: %s", util.ToJSON(olaresSpace))
+
+	olaresSpace.SetRepoUrl()
+	olaresSpace.SetEnv()
+
+	logger.Debugf("get token, data: %s", util.Base64encode([]byte(util.ToJSON(olaresSpace))))
+
+	r, err := restic.NewRestic(ctx, s.RepoName, s.OlaresId, olaresSpace.GetEnv(), &restic.Option{})
+	if err != nil {
+		exitCh <- &StorageResponse{Error: err}
+		return
+	}
+
+	snapshotsSummary, err := r.GetSnapshots()
+	if err != nil {
+		exitCh <- &StorageResponse{Error: err}
+		return
+	}
+
+	exitCh <- &StorageResponse{SnapshotsSummary: snapshotsSummary}
 }
