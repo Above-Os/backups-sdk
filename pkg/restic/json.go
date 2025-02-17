@@ -67,6 +67,7 @@ type Snapshot struct {
 	Paths          []string         `json:"paths"`
 	Hostname       string           `json:"hostname"`
 	Username       string           `json:"username"`
+	Tags           []string         `json:"tags"`
 	ProgramVersion string           `json:"program_version"`
 	Summary        *SnapshotSummary `json:"summary"`
 	Id             string           `json:"id"`
