@@ -25,13 +25,12 @@ type BackupClient struct {
 }
 
 type BackupClientOption struct {
-	RepoName          string
-	OlaresId          string
-	BackupType        string
-	Endpoint          string
-	AccessKeyId       string
-	SecretAccessKey   string
-	BackupToLocalPath string
+	RepoName        string
+	OlaresId        string
+	StorageLocation string
+	Endpoint        string
+	AccessKey       string
+	SecretAccessKey string
 
 	Path            string
 	CloudApiMirror  string
@@ -41,21 +40,22 @@ type BackupClientOption struct {
 	Logger          *zap.SugaredLogger
 }
 
-// backup
+// + backup
 
 func NewBackupClient(opt *BackupClientOption,
 ) *BackupClient {
 	var o = storageprovider.BackupOption{
-		RepoName:          opt.RepoName,
-		OlaresId:          opt.OlaresId,
-		BackupType:        opt.BackupType,
-		Endpoint:          opt.Endpoint,
-		AccessKeyId:       opt.AccessKeyId,
-		SecretAccessKey:   opt.SecretAccessKey,
-		BackupToLocalPath: opt.BackupToLocalPath,
-		UploadPath:        opt.Path,
-		CloudApiMirror:    opt.CloudApiMirror,
-		LimitUploadRate:   opt.LimitUploadRate,
+		RepoName:        opt.RepoName,
+		OlaresId:        opt.OlaresId,
+		StorageLocation: opt.StorageLocation,
+		Endpoint:        opt.Endpoint,
+		AccessKey:       opt.AccessKey,
+		SecretAccessKey: opt.SecretAccessKey,
+		UploadPath:      opt.Path,
+		CloudApiMirror:  opt.CloudApiMirror,
+		LimitUploadRate: opt.LimitUploadRate,
+		BaseDir:         opt.BaseDir,
+		Version:         opt.Version,
 	}
 
 	var client = &BackupClient{
@@ -72,8 +72,8 @@ func (c *BackupClient) Backup() error {
 		return errors.WithStack(fmt.Errorf("backup path not exist: %s", c.option.UploadPath))
 	}
 
-	if c.option.BackupType == common.BackupTypeLocal && !util.IsExist(c.option.BackupToLocalPath) {
-		return errors.WithStack(fmt.Errorf("backup to local path not exist: %s", c.option.BackupToLocalPath))
+	if c.option.StorageLocation == common.StorageLocationFilesystem && !util.IsExist(c.option.Endpoint) {
+		return errors.WithStack(fmt.Errorf("backup to filesystem repository not exist: %s", c.option.Endpoint))
 	}
 
 	u := &storageprovider.Backup{}
@@ -96,7 +96,7 @@ func (c *BackupClient) setLogger(baseDir string, version string, log *zap.Sugare
 	logger.InitLog(jsonLogDir, consoleLogDir, true)
 }
 
-//  restore
+// + restore
 
 type RestoreClient struct {
 	option storageprovider.RestoreOption
@@ -106,9 +106,9 @@ type RestoreClientOption struct {
 	RepoName          string
 	SnapshotId        string
 	OlaresId          string
-	BackupType        string
+	StorageLocation   string
 	Endpoint          string
-	AccessKeyId       string
+	AccessKey         string
 	SecretAccessKey   string
 	TargetPath        string
 	CloudApiMirror    string
@@ -123,13 +123,15 @@ func NewRestoreClient(opt *RestoreClientOption) *RestoreClient {
 		RepoName:          opt.RepoName,
 		SnapshotId:        opt.SnapshotId,
 		OlaresId:          opt.OlaresId,
-		BackupType:        opt.BackupType,
+		StorageLocation:   opt.StorageLocation,
 		Endpoint:          opt.Endpoint,
-		AccessKeyId:       opt.AccessKeyId,
+		AccessKey:         opt.AccessKey,
 		SecretAccessKey:   opt.SecretAccessKey,
 		TargetPath:        opt.TargetPath,
 		CloudApiMirror:    opt.CloudApiMirror,
 		LimitDownloadRate: opt.LimitDownloadRate,
+		BaseDir:           opt.BaseDir,
+		Version:           opt.Version,
 	}
 
 	var client = &RestoreClient{
@@ -171,6 +173,7 @@ func (c *RestoreClient) setLogger(baseDir string, version string, log *zap.Sugar
 	logger.InitLog(jsonLogDir, consoleLogDir, true)
 }
 
+// + snapshots
 type SnapshotsClient struct {
 	option storageprovider.SnapshotsOption
 }
@@ -178,9 +181,9 @@ type SnapshotsClient struct {
 type SnapshotsClientOption struct {
 	RepoName        string
 	OlaresId        string
-	BackupType      string
+	StorageLocation string
 	Endpoint        string
-	AccessKeyId     string
+	AccessKey       string
 	SecretAccessKey string
 	CloudApiMirror  string
 	BaseDir         string
@@ -192,11 +195,13 @@ func NewSnapshotsClient(opt *SnapshotsClientOption) *SnapshotsClient {
 	var o = storageprovider.SnapshotsOption{
 		RepoName:        opt.RepoName,
 		OlaresId:        opt.OlaresId,
-		BackupType:      opt.BackupType,
+		StorageLocation: opt.StorageLocation,
 		Endpoint:        opt.Endpoint,
-		AccessKeyId:     opt.AccessKeyId,
+		AccessKey:       opt.AccessKey,
 		SecretAccessKey: opt.SecretAccessKey,
 		CloudApiMirror:  opt.CloudApiMirror,
+		BaseDir:         opt.BaseDir,
+		Version:         opt.Version,
 	}
 
 	var client = &SnapshotsClient{
@@ -204,6 +209,8 @@ func NewSnapshotsClient(opt *SnapshotsClientOption) *SnapshotsClient {
 	}
 
 	client.setLogger(opt.BaseDir, opt.Version, opt.Logger)
+
+	logger.Debugf("snapshots options: %s", util.ToJSON(o))
 
 	return client
 }
