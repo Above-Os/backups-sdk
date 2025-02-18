@@ -36,15 +36,15 @@ type OlaresSpace struct {
 	RepoPassword string `json:"-"`
 	OlaresId     string `json:"olares_id"`
 	OlaresName   string `json:"olares_name"`
+	ClusterId    string `json:"cluster_id"`
 
 	UserId    string `json:"user_id"`
 	UserToken string `json:"user_token"`
 
-	BackupType        string `json:"backup_type"`
-	Endpoint          string `json:"endpoint"`
-	AccessKeyId       string `json:"access_key_id"`
-	SecretAccessKey   string `json:"secret_access_key"`
-	BackupToLocalPath string `json:"backup_to_local_path"`
+	StorageLocation string `json:"storage"`
+	Endpoint        string `json:"endpoint"`
+	AccessKey       string `json:"access_key"`
+	SecretAccessKey string `json:"secret_access_key"`
 
 	Path               string              `json:"path"`
 	CloudApiMirror     string              `json:"cloud_api_mirror"`
@@ -53,6 +53,9 @@ type OlaresSpace struct {
 	Env                map[string]string   `json:"-"`
 
 	BackupsOperate BackupsOperate `json:"backup_operate"`
+
+	BaseDir string `json:"base_dir"`
+	Version string `json:"version"`
 }
 
 type OlaresSpaceSession struct {
@@ -60,8 +63,8 @@ type OlaresSpaceSession struct {
 	Bucket         string `json:"bucket"`
 	Token          string `json:"st"`
 	Prefix         string `json:"prefix"`
-	Secret         string `json:"secret"`
-	Key            string `json:"key"`
+	Secret         string `json:"sk"`
+	Key            string `json:"ak"`
 	Expiration     string `json:"expiration"`
 	Region         string `json:"region"`
 	ResticRepo     string `json:"restic_repo"`
@@ -97,11 +100,19 @@ type AccountValue struct {
 	Expired any    `json:"expired"`
 }
 
+var TerminusGVR = schema.GroupVersionResource{
+	Group:    "sys.bytetrade.io",
+	Version:  "v1alpha1",
+	Resource: "terminus",
+}
+
 var UsersGVR = schema.GroupVersionResource{
 	Group:    "iam.kubesphere.io",
 	Version:  "v1alpha2",
 	Resource: "users",
 }
+
+var debugDuration = true
 
 func (c *OlaresSpaceSession) Expire() (time.Time, error) {
 	return time.Parse(time.RFC3339, c.Expiration)
@@ -113,12 +124,12 @@ type CloudStorageAccountResponse struct {
 }
 
 func (t *OlaresSpace) SetRepoUrl() {
-	switch t.BackupType {
-	case common.BackupTypeS3:
+	switch t.StorageLocation {
+	case common.StorageLocationS3:
 		t.formatS3Repo()
-	case common.BackupTypeCos:
+	case common.StorageLocationCos:
 		t.formatCosRepo()
-	case common.BackupTypeLocal:
+	case common.StorageLocationFilesystem:
 		t.formatLocalRepo()
 	default:
 		t.formatOlaresSpaceRepo() // todo distinguish between s3 and cos
@@ -166,7 +177,7 @@ func (t *OlaresSpace) formatS3Repo() error {
 	var bucket = repoBaseSplit[0]
 	var region = repoBaseSplit[1]
 
-	t.OlaresSpaceSession.Key = t.AccessKeyId
+	t.OlaresSpaceSession.Key = t.AccessKey
 	t.OlaresSpaceSession.Secret = t.SecretAccessKey
 	t.OlaresSpaceSession.Region = region
 	t.OlaresSpaceSession.ResticRepo = fmt.Sprintf("s3:s3.%s.%s/%s/%s%s", region, common.AwsDomain, bucket, repoPrefix, t.RepoName)
@@ -206,7 +217,7 @@ func (t *OlaresSpace) formatCosRepo() error {
 	}
 	var repoRegion = repoBaseSplit[1]
 
-	t.OlaresSpaceSession.Key = t.AccessKeyId
+	t.OlaresSpaceSession.Key = t.AccessKey
 	t.OlaresSpaceSession.Secret = t.SecretAccessKey
 	t.OlaresSpaceSession.Region = repoRegion
 	t.OlaresSpaceSession.ResticRepo = fmt.Sprintf("s3:https://cos.%s.%s/%s/%s%s", repoRegion, common.TencentDomain, repoBucket, repoPrefix, t.RepoName)
@@ -216,7 +227,7 @@ func (t *OlaresSpace) formatCosRepo() error {
 }
 
 func (t *OlaresSpace) formatLocalRepo() error {
-	t.OlaresSpaceSession.ResticRepo = path.Join(t.BackupToLocalPath, t.RepoName)
+	t.OlaresSpaceSession.ResticRepo = path.Join(t.Endpoint, t.RepoName)
 	t.OlaresSpaceSession.ResticPassword = t.RepoPassword
 	return nil
 }
@@ -284,24 +295,29 @@ func (t *OlaresSpace) SetEnv() {
 
 	_ = msg
 	// fmt.Println(msg)
-	// logger.Debugf("export env: %s", util.Base64encode([]byte(msg)))
+	logger.Debugf("export env: %s", util.Base64encode([]byte(msg)))
 }
 
 func (t *OlaresSpace) GetEnv() map[string]string {
 	return t.Env
 }
 
-func (t *OlaresSpace) RefreshToken(isDebug bool) error {
-	if t.BackupType != common.DefaultBackupType {
+func (t *OlaresSpace) GetToken() error {
+	if t.StorageLocation != common.DefaultStorageLocation {
 		return nil
 	}
+
 	if t.UserId != "" && t.UserToken != "" {
-		logger.Infof("retrieving olares space token, userid: %s, usertoken: %s", t.UserId, t.UserToken)
-		err := t.setToken(isDebug)
+		logger.Infof("retrieving olares space token, userid: %s, usertoken: %s, clusterid: %s", t.UserId, t.UserToken, t.ClusterId)
+		err := t.setToken()
 		if err == nil {
 			return nil
 		}
 		logger.Info("failed to obtain olares space token, retrying, please wait...")
+	}
+
+	if err := t.GetClusterId(); err != nil {
+		return err
 	}
 
 	podIp, err := t.getPodIp()
@@ -322,10 +338,10 @@ func (t *OlaresSpace) RefreshToken(isDebug bool) error {
 	t.UserId = userId
 	t.UserToken = userToken
 
-	return t.setToken(isDebug)
+	return t.setToken()
 }
 
-func (t *OlaresSpace) SetAccount() error {
+func (t *OlaresSpace) GetAccount() error {
 	factory, err := client.NewFactory()
 	if err != nil {
 		return errors.WithStack(err)
@@ -365,6 +381,52 @@ func (t *OlaresSpace) SetAccount() error {
 	}
 
 	t.OlaresName = olaresName
+	return nil
+}
+
+func (t *OlaresSpace) GetClusterId() error {
+	factory, err := client.NewFactory()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	dynamicClient, err := factory.DynamicClient()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	var backoff = wait.Backoff{
+		Duration: 2 * time.Second,
+		Factor:   2,
+		Jitter:   0.1,
+		Steps:    5,
+	}
+
+	var clusterId string
+	if err := retry.OnError(backoff, func(err error) bool {
+		return true
+	}, func() error {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		unstructuredUser, err := dynamicClient.Resource(TerminusGVR).Get(ctx, "terminus", metav1.GetOptions{})
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		obj := unstructuredUser.UnstructuredContent()
+		clusterId, _, err = unstructured.NestedString(obj, "metadata", "labels", "bytetrade.io/cluster-id")
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		if clusterId == "" {
+			return errors.WithStack(fmt.Errorf("cluster id not found"))
+		}
+		return nil
+	}); err != nil {
+		return errors.WithStack(err)
+	}
+
+	t.ClusterId = clusterId
 	return nil
 }
 
@@ -486,11 +548,7 @@ func (t *OlaresSpace) getUserToken(podIp string, appKey string) (userid, token s
 	return
 }
 
-func (t *OlaresSpace) GetToken() {
-	t.setToken(false)
-}
-
-func (t *OlaresSpace) setToken(isDebug bool) error {
+func (t *OlaresSpace) setToken() error {
 	var backoff = wait.Backoff{
 		Duration: 3 * time.Second,
 		Factor:   2,
@@ -502,7 +560,6 @@ func (t *OlaresSpace) setToken(isDebug bool) error {
 		return true
 	}, func() error {
 		var serverDomain = util.DefaultValue(common.DefaultCloudApiUrl, t.CloudApiMirror)
-
 		serverURL := fmt.Sprintf("%s/v1/resource/stsToken/backup", strings.TrimRight(serverDomain, "/"))
 
 		httpClient := resty.New().SetTimeout(15 * time.Second).SetDebug(true).SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
@@ -512,8 +569,8 @@ func (t *OlaresSpace) setToken(isDebug bool) error {
 				"token":           t.UserToken,
 				"cloudName":       t.parseCloudName(),
 				"region":          t.parseRegion(),
-				"clusterId":       util.MD5(t.Path),
-				"durationSeconds": fmt.Sprintf("%.0f", t.parseDuration().Seconds()),
+				"clusterId":       t.parseClusterId(),
+				"durationSeconds": fmt.Sprintf("%.0f", t.parseDuration(debugDuration).Seconds()),
 			}).
 			SetResult(&CloudStorageAccountResponse{}).
 			Post(serverURL)
@@ -527,7 +584,61 @@ func (t *OlaresSpace) setToken(isDebug bool) error {
 		}
 
 		queryResp := resp.Result().(*CloudStorageAccountResponse)
-		if queryResp.Code != http.StatusOK { // 506
+		if queryResp.Code != http.StatusOK { // 501(missing params) 506(expired or un-login)
+			return errors.WithStack(fmt.Errorf("get cloud storage account from cloud error: %d, data: %s",
+				queryResp.Code, queryResp.Message))
+		}
+
+		if queryResp.Data == nil {
+			return errors.WithStack(fmt.Errorf("get cloud storage account from cloud data is empty, code: %d, data: %s", queryResp.Code, queryResp.Message))
+		}
+
+		t.OlaresSpaceSession = queryResp.Data
+		// t.Sessions.SpaceSession = queryResp.Data
+
+		return nil
+	}); err != nil {
+		return errors.WithStack(err)
+	}
+
+	return nil
+}
+
+func (t *OlaresSpace) refreshToken() error {
+	var backoff = wait.Backoff{
+		Duration: 3 * time.Second,
+		Factor:   2,
+		Jitter:   0.1,
+		Steps:    3,
+	}
+
+	if err := retry.OnError(backoff, func(err error) bool {
+		return true
+	}, func() error {
+		var serverDomain = util.DefaultValue(common.DefaultCloudApiUrl, t.CloudApiMirror)
+		serverURL := fmt.Sprintf("%s/v1/resource/stsToken/backup/refresh", strings.TrimRight(serverDomain, "/"))
+
+		httpClient := resty.New().SetTimeout(15 * time.Second).SetDebug(true).SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+		resp, err := httpClient.R().
+			SetFormData(map[string]string{
+				"ak":              t.OlaresSpaceSession.Key,
+				"sk":              t.OlaresSpaceSession.Secret,
+				"token":           t.OlaresSpaceSession.Token,
+				"durationSeconds": fmt.Sprintf("%.0f", t.parseDuration(debugDuration).Seconds()),
+			}).
+			SetResult(&CloudStorageAccountResponse{}).
+			Post(serverURL)
+
+		if err != nil {
+			return errors.WithStack(fmt.Errorf("refresh token from cloud error: %v, url: %s", err, serverURL))
+		}
+
+		if resp.StatusCode() != http.StatusOK {
+			return errors.WithStack(fmt.Errorf("refresh token from cloud response error: %d, data: %s", resp.StatusCode(), resp.Body()))
+		}
+
+		queryResp := resp.Result().(*CloudStorageAccountResponse)
+		if queryResp.Code != http.StatusOK { // 501(missing params) 506(expired or un-login)
 			return errors.WithStack(fmt.Errorf("get cloud storage account from cloud error: %d, data: %s",
 				queryResp.Code, queryResp.Message))
 		}
@@ -538,9 +649,6 @@ func (t *OlaresSpace) setToken(isDebug bool) error {
 
 		t.OlaresSpaceSession = queryResp.Data
 
-		if isDebug {
-		}
-
 		return nil
 	}); err != nil {
 		return errors.WithStack(err)
@@ -550,24 +658,29 @@ func (t *OlaresSpace) setToken(isDebug bool) error {
 }
 
 func (t *OlaresSpace) parseRegion() string {
-	if t.BackupType == common.DefaultBackupType {
+	if t.StorageLocation == common.DefaultStorageLocation {
 		return common.DefaultBackupOlaresRegion
 	}
 	return ""
 }
 
 func (t *OlaresSpace) parseCloudName() string {
-	switch t.BackupType {
-	case common.BackupTypeCos:
-		return common.BackupTypeCos
-	case common.BackupTypeS3:
-		return common.BackupTypeS3
+	switch t.StorageLocation {
+	case common.StorageLocationCos:
+		return common.StorageLocationCos
+	case common.StorageLocationS3:
+		return common.StorageLocationS3
 	default:
-		return common.BackupTypeOlaresAWS
+		return common.DefaultStorageLocation
 	}
 }
 
-func (t *OlaresSpace) parseDuration() time.Duration {
+func (t *OlaresSpace) parseDuration(isDebug bool) time.Duration {
+	if isDebug {
+		var dur = 15 * time.Minute
+		return dur
+	}
+
 	var defaultDuration = 12 * time.Hour
 	if t.Duration == "" {
 		return defaultDuration
@@ -583,4 +696,8 @@ func (t *OlaresSpace) parseDuration() time.Duration {
 	}
 
 	return dur
+}
+
+func (t *OlaresSpace) parseClusterId() string {
+	return util.Base64encode([]byte(t.ClusterId))
 }

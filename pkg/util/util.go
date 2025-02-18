@@ -7,8 +7,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"time"
 )
 
 func DefaultValue(defaultValue string, newValue string) string {
@@ -98,5 +101,37 @@ func IsExist(path string) bool {
 
 func Base64encode(s []byte) string {
 	return base64.StdEncoding.EncodeToString(s)
+}
 
+func WriteFile(fileName string, content []byte, perm os.FileMode) error {
+	dir := filepath.Dir(fileName)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		if err = os.MkdirAll(dir, perm); err != nil {
+			return err
+		}
+	}
+
+	if err := ioutil.WriteFile(fileName, content, perm); err != nil {
+		return err
+	}
+	return nil
+}
+
+func ReadFile(fileName string) ([]byte, error) {
+	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+		return nil, fmt.Errorf("file does not exist: %s", fileName)
+	}
+
+	content, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	return content, nil
+}
+
+func IsTimestampAboutToExpire(timestamp int64) (time.Time, bool) {
+	expireTime := time.UnixMilli(timestamp)
+	currentTime := time.Now().Add(time.Duration(5) * time.Minute)
+	return expireTime, currentTime.After(expireTime)
 }
