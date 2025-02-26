@@ -1,6 +1,8 @@
 package restic
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type StatusUpdate struct {
 	MessageType      string   `json:"message_type"` // "status"
