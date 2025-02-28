@@ -2,17 +2,52 @@ package util
 
 import (
 	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/user"
+	"path"
 	"path/filepath"
 	"time"
 )
+
+func GetBaseDir(baseDir string, defaultBaseDir string) string {
+	if baseDir != "" {
+		return baseDir
+	}
+	user, err := user.Current()
+	if err != nil {
+		panic(errors.New("get current user failed"))
+	}
+	return path.Join(user.HomeDir, defaultBaseDir)
+}
+
+func AesEncrypt(origin, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	blockSize := block.BlockSize()
+	origin = PKCS7Padding(origin, blockSize)
+	blockMode := cipher.NewCBCEncrypter(block, key[:blockSize])
+	crypted := make([]byte, len(origin))
+	blockMode.CryptBlocks(crypted, origin)
+	return crypted, nil
+}
+
+func PKCS7Padding(ciphertext []byte, blockSize int) []byte {
+	padding := blockSize - len(ciphertext)%blockSize
+	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(ciphertext, padtext...)
+}
 
 func DefaultValue(defaultValue string, newValue string) string {
 	if newValue == "" {
@@ -132,6 +167,6 @@ func ReadFile(fileName string) ([]byte, error) {
 
 func IsTimestampAboutToExpire(timestamp int64) (time.Time, bool) {
 	expireTime := time.UnixMilli(timestamp)
-	currentTime := time.Now().Add(time.Duration(5) * time.Minute)
+	currentTime := time.Now().Add(time.Duration(30) * time.Minute)
 	return expireTime, currentTime.After(expireTime)
 }

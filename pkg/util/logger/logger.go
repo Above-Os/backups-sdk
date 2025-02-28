@@ -19,7 +19,7 @@ func InitLog(jsonLogDir, consoleLogFilePath string, consoleLogTruncate bool) {
 		found, err := isDirExist(logDir)
 		if err != nil {
 			fmt.Println("log dir found error", err)
-			os.Exit(1)
+			// os.Exit(1)
 		}
 
 		if !found {
