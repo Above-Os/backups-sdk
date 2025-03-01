@@ -2,7 +2,7 @@ package restore
 
 import (
 	"bytetrade.io/web3os/backups-sdk/cmd/options"
-	"bytetrade.io/web3os/backups-sdk/pkg/restore"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage"
 	"github.com/spf13/cobra"
 )
 
@@ -27,8 +27,8 @@ func NewCmdSpace() *cobra.Command {
 		Use:   "space",
 		Short: "Restore files from Space",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = restore.NewRestoreService(o.BaseDir)
-			restoreService.RestoreFromSpace(o)
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Basedir: o.BaseDir, Space: o})
+			restoreService.Restore()
 		},
 	}
 	o.AddFlags(cmd)
@@ -41,8 +41,8 @@ func NewCmdS3() *cobra.Command {
 		Use:   "s3",
 		Short: "Restore files from S3",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = restore.NewRestoreService(o.BaseDir)
-			restoreService.RestoreFromS3(o)
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Basedir: o.BaseDir, S3: o})
+			restoreService.Restore()
 		},
 	}
 	o.AddFlags(cmd)
@@ -55,8 +55,8 @@ func NewCmdCos() *cobra.Command {
 		Use:   "cos",
 		Short: "Restore files from Tencent COS",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = restore.NewRestoreService(o.BaseDir)
-			restoreService.RestoreFromCos(o)
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Basedir: o.BaseDir, Cos: o})
+			restoreService.Restore()
 		},
 	}
 	o.AddFlags(cmd)
@@ -69,8 +69,8 @@ func NewCmdFs() *cobra.Command {
 		Use:   "fs",
 		Short: "Restore files from FileSystem",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = restore.NewRestoreService(o.BaseDir)
-			restoreService.RestoreFromFs(o)
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Basedir: o.BaseDir, Filesystem: o})
+			restoreService.Restore()
 		},
 	}
 	o.AddFlags(cmd)
