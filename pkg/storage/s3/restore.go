@@ -9,12 +9,12 @@ import (
 )
 
 func (s *S3) Restore() error {
-	repository, err := s.formatS3Repository()
+	repository, err := s.FormatRepository()
 	if err != nil {
 		return err
 	}
 
-	var resticEnv = s.getEnv(repository)
+	var resticEnv = s.GetEnv(repository)
 
 	logger.Debugf("s3 restore env vars: %s", util.Base64encode([]byte(resticEnv.ToString())))
 

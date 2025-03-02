@@ -1,4 +1,4 @@
-package vars
+package space
 
 import "bytetrade.io/web3os/backups-sdk/pkg/response"
 

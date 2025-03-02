@@ -9,12 +9,12 @@ import (
 )
 
 func (c *Cos) Backup() error {
-	repository, err := c.formatCosRepository()
+	repository, err := c.FormatRepository()
 	if err != nil {
 		return err
 	}
 
-	var resticEnv = c.getEnv(repository)
+	var resticEnv = c.GetEnv(repository)
 
 	logger.Debugf("cos backup env vars: %s", util.Base64encode([]byte(resticEnv.ToString())))
 

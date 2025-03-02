@@ -9,12 +9,12 @@ import (
 )
 
 func (c *Cos) Restore() error {
-	repository, err := c.formatCosRepository()
+	repository, err := c.FormatRepository()
 	if err != nil {
 		return err
 	}
 
-	var resticEnv = c.getEnv(repository)
+	var resticEnv = c.GetEnv(repository)
 	logger.Debugf("cos restore env vars: %s", util.Base64encode([]byte(resticEnv.ToString())))
 
 	r, err := restic.NewRestic(context.Background(), c.RepoName, "", resticEnv.ToMap(), nil)

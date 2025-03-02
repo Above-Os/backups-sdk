@@ -10,7 +10,7 @@ import (
 
 func (f *Filesystem) Backup() error {
 	f.setRepoDir()
-	var resticEnv = f.getEnv()
+	var resticEnv = f.GetEnv("")
 	var repoName = f.RepoName
 	var path = f.Path
 

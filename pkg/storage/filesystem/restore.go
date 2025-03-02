@@ -9,7 +9,7 @@ import (
 )
 
 func (f *Filesystem) Restore() error {
-	var resticEnv = f.getEnv()
+	var resticEnv = f.GetEnv("")
 
 	logger.Debugf("fs restore env vars: %s", util.Base64encode([]byte(resticEnv.ToString())))
 

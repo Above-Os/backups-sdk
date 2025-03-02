@@ -15,12 +15,16 @@ type Filesystem struct {
 	Path       string
 }
 
-func (f *Filesystem) getEnv() *restic.ResticEnv {
+func (f *Filesystem) GetEnv(repository string) *restic.ResticEnv {
 	var envs = &restic.ResticEnv{
 		RESTIC_REPOSITORY: path.Join(f.Endpoint, f.RepoName),
 		RESTIC_PASSWORD:   f.Password,
 	}
 	return envs
+}
+
+func (f *Filesystem) FormatRepository() (repository string, err error) {
+	return "", nil
 }
 
 func (f *Filesystem) setRepoDir() {

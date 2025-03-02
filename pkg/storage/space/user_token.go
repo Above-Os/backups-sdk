@@ -1,4 +1,4 @@
-package user
+package space
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/client"
-	"bytetrade.io/web3os/backups-sdk/pkg/storage/space/tokens/vars"
 	"bytetrade.io/web3os/backups-sdk/pkg/util"
 	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/util/net"
@@ -143,7 +142,7 @@ func (u *UserToken) getSpaceUserAccessToken(olaresId, olaresName string, podIp s
 	var data = u.getRequestUserData(olaresName)
 	var url = u.getRequestUserUrl(podIp)
 
-	result, err := net.Post[vars.AccountResponse](url, headers, data, true, false)
+	result, err := net.Post[AccountResponse](url, headers, data, true, false)
 	if err != nil {
 		return err
 	}

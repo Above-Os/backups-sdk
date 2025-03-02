@@ -19,7 +19,7 @@ type Cos struct {
 	Path            string
 }
 
-func (c *Cos) getEnv(repository string) *restic.ResticEnv {
+func (c *Cos) GetEnv(repository string) *restic.ResticEnv {
 	var envs = &restic.ResticEnv{
 		AWS_ACCESS_KEY_ID:     c.AccessKey,
 		AWS_SECRET_ACCESS_KEY: c.SecretAccessKey,
@@ -29,7 +29,7 @@ func (c *Cos) getEnv(repository string) *restic.ResticEnv {
 	return envs
 }
 
-func (c *Cos) formatCosRepository() (repository string, err error) {
+func (c *Cos) FormatRepository() (repository string, err error) {
 	if c.Endpoint == "" {
 		err = errors.New("cos endpoint is required")
 		return

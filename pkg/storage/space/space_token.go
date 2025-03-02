@@ -1,17 +1,16 @@
 package space
 
 import (
+	"bytetrade.io/web3os/backups-sdk/pkg/response"
 	"context"
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/client"
 	"bytetrade.io/web3os/backups-sdk/pkg/common"
-	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/util"
 	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/util/net"
@@ -26,6 +25,24 @@ import (
 )
 
 var debugDuration = true
+
+type CloudStorageAccountResponse struct {
+	response.Header
+	Data *OlaresSpaceSession `json:"data"`
+}
+
+type OlaresSpaceSession struct {
+	Cloud          string `json:"cloud"`
+	Bucket         string `json:"bucket"`
+	Token          string `json:"st"`
+	Prefix         string `json:"prefix"`
+	Secret         string `json:"sk"`
+	Key            string `json:"ak"`
+	Expiration     string `json:"expiration"`
+	Region         string `json:"region"`
+	ResticRepo     string `json:"restic_repo"`
+	ResticPassword string `json:"-"`
+}
 
 type OlaresSpaceParam struct {
 	Duration  string
@@ -150,32 +167,6 @@ func (s *SpaceToken) GetSpaceToken(olaresDid, olaresId, olaresName, spaceUserAcc
 	}
 
 	return nil
-}
-
-func (s *SpaceToken) GetEnv(repoName string, password string) *restic.ResticEnv {
-	repo, _ := s.formatSpaceRepository(repoName)
-
-	var envs = &restic.ResticEnv{
-		AWS_ACCESS_KEY_ID:     s.AccessKey,
-		AWS_SECRET_ACCESS_KEY: s.SecretKey,
-		AWS_SESSION_TOKEN:     s.SessionToken,
-		RESTIC_REPOSITORY:     repo,
-		RESTIC_PASSWORD:       password,
-	}
-
-	return envs
-}
-
-//
-//
-//
-
-func (s *SpaceToken) formatSpaceRepository(repoName string) (repository string, err error) {
-	var repoPrefix = filepath.Join(s.Prefix, "restic", repoName)
-	var domain = fmt.Sprintf("s3.%s.%s", s.Region, common.AwsDomain)
-	var repo = filepath.Join(domain, s.Bucket, repoPrefix)
-	repository = fmt.Sprintf("s3:%s", repo)
-	return
 }
 
 func (s *SpaceToken) getClusterId() (clusterId string, err error) {

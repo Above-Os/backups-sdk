@@ -9,7 +9,7 @@ import (
 )
 
 func (f *Filesystem) Snapshots() error {
-	var resticEnv = f.getEnv()
+	var resticEnv = f.GetEnv("")
 	logger.Debugf("fs snapshots env vars: %s", util.Base64encode([]byte(resticEnv.ToString())))
 
 	r, err := restic.NewRestic(context.Background(), f.RepoName, "", resticEnv.ToMap(), nil)

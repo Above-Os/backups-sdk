@@ -22,7 +22,7 @@ type S3 struct {
 	Path            string
 }
 
-func (s *S3) getEnv(repository string) *restic.ResticEnv {
+func (s *S3) GetEnv(repository string) *restic.ResticEnv {
 	var envs = &restic.ResticEnv{
 		AWS_ACCESS_KEY_ID:     s.AccessKey,
 		AWS_SECRET_ACCESS_KEY: s.SecretAccessKey,
@@ -32,7 +32,7 @@ func (s *S3) getEnv(repository string) *restic.ResticEnv {
 	return envs
 }
 
-func (s *S3) formatS3Repository() (repository string, err error) {
+func (s *S3) FormatRepository() (repository string, err error) {
 	if s.Endpoint == "" {
 		err = errors.New("s3 endpoint is required")
 		return

@@ -9,12 +9,12 @@ import (
 )
 
 func (s *S3) Snapshots() error {
-	repository, err := s.formatS3Repository()
+	repository, err := s.FormatRepository()
 	if err != nil {
 		return err
 	}
 
-	var resticEnv = s.getEnv(repository)
+	var resticEnv = s.GetEnv(repository)
 	logger.Debugf("s3 snapshots env vars: %s", util.Base64encode([]byte(resticEnv.ToString())))
 
 	r, err := restic.NewRestic(context.Background(), s.RepoName, "", resticEnv.ToMap(), nil)
