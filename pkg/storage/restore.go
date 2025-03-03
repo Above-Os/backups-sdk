@@ -1,21 +1,18 @@
 package storage
 
 import (
-	"bytes"
+	"context"
 	"fmt"
-	"log"
-	"path"
-	"syscall"
 
 	"bytetrade.io/web3os/backups-sdk/cmd/options"
 	"bytetrade.io/web3os/backups-sdk/pkg/common"
+	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/cos"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/filesystem"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/s3"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/space"
 	"bytetrade.io/web3os/backups-sdk/pkg/util"
 	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
-	"golang.org/x/term"
 )
 
 type RestoreOption struct {
@@ -38,16 +35,14 @@ func NewRestoreService(option *RestoreOption) *RestoreService {
 		baseDir: baseDir,
 		option:  option,
 	}
-	var jsonLogDir = path.Join(baseDir, "logs")
-	var consoleLogDir = path.Join(baseDir, "logs", "backups", "restore.log")
 
-	logger.InitLog(jsonLogDir, consoleLogDir, true)
+	InitLog(baseDir, common.Restore)
 
 	return restoreService
 }
 
 func (r *RestoreService) Restore() {
-	password, err := r.enterPassword()
+	password, err := InputPasswordWithConfirm(common.Restore)
 	if err != nil {
 		panic(err)
 	}
@@ -63,6 +58,8 @@ func (r *RestoreService) Restore() {
 			CloudApiMirror: r.option.Space.CloudApiMirror,
 			BaseDir:        r.baseDir,
 			Password:       password,
+			UserToken:      &space.UserToken{},
+			SpaceToken:     &space.SpaceToken{},
 		}
 	} else if r.option.S3 != nil {
 		service = &s3.S3{
@@ -97,31 +94,69 @@ func (r *RestoreService) Restore() {
 		logger.Fatalf("There is no suitable recovery method.")
 	}
 
-	if err := service.Restore(); err != nil {
+	if err := r.startRestore(service); err != nil {
 		logger.Errorf("Restore from Space error: %v", err)
 	}
 }
 
-func (r *RestoreService) enterPassword() (string, error) {
-	var password []byte
-	var confirmed []byte
-	_ = password
-
-	for {
-		fmt.Print("\nEnter password for repository: ")
-		password, err := term.ReadPassword(int(syscall.Stdin))
-		if err != nil {
-			log.Fatalf("Failed to read password: %v", err)
-			return "", err
-		}
-		password = bytes.TrimSpace(password)
-		if len(password) == 0 {
-			continue
-		}
-		confirmed = password
-		break
+func (r *RestoreService) startRestore(service Location) error {
+	restoreFromLocation := service.GetLocation()
+	if restoreFromLocation == "" {
+		return fmt.Errorf("There is no suitable recovery method.")
 	}
-	fmt.Printf("\n\n")
 
-	return string(confirmed), nil
+	if restoreFromLocation == common.LocationSpace {
+		return r.restoreFromSpace(service)
+	}
+
+	if restoreFromLocation == common.LocationS3 ||
+		restoreFromLocation == common.LocationCos ||
+		restoreFromLocation == common.LocationFileSystem {
+		return r.restoreFromCloud(service)
+	}
+
+	return nil
+}
+
+func (r *RestoreService) restoreFromSpace(service Location) error {
+	return service.Restore()
+}
+
+func (r *RestoreService) restoreFromCloud(service Location) error {
+	repository, err := service.FormatRepository()
+	if err != nil {
+		return err
+	}
+	envs := service.GetEnv(repository)
+
+	location := service.GetLocation()
+	repoName := service.GetRepoName()
+	restorePath := service.GetPath()
+	snapshotId := service.GetSnapshotId()
+
+	logger.Debugf("%s restore env vars: %s", location, util.Base64encode([]byte(envs.ToString())))
+
+	re, err := restic.NewRestic(context.Background(), repoName, envs, nil)
+	if err != nil {
+		return err
+	}
+	snapshotSummary, err := re.GetSnapshot(snapshotId)
+	if err != nil {
+		return err
+	}
+
+	var uploadPath = snapshotSummary.Paths[0]
+	logger.Infof("%s restore spanshot %s detail: %s", location, snapshotId, util.ToJSON(snapshotSummary))
+
+	var summary *restic.RestoreSummaryOutput
+	summary, err = re.Restore(snapshotId, uploadPath, restorePath)
+	if err != nil {
+		return err
+	}
+
+	if summary != nil {
+		logger.Infof("restore from %s successful, data: %s", location, util.ToJSON(summary))
+	}
+
+	return nil
 }

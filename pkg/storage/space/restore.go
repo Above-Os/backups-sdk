@@ -47,46 +47,26 @@ func (s *Space) Restore() error {
 func (s *Space) runRestore(ctx context.Context, exitCh chan<- *StorageResponse) {
 	var repoName = s.RepoName
 	var snapshotId = s.SnapshotId
-	var olaresId = s.OlaresId
 	var cloudApiMirror = s.CloudApiMirror
 	var baseDir = s.BaseDir
-	var password = s.Password
 	var path = s.Path
 	var repoLocation = "aws"
 	var repoRegion = "us-east-1"
+	_ = baseDir
 
-	svc, err := tokens.NewTokenService(olaresId)
-	if err != nil {
-		exitCh <- &StorageResponse{Error: fmt.Errorf("space token service error: %v", err)}
+	// get user token and space aws session-token
+	if err := s.getTokens(repoLocation, repoRegion, cloudApiMirror); err != nil {
+		exitCh <- &StorageResponse{Error: err}
 		return
-	}
-
-	var existsSpaceTokenCacheFile bool = true
-	err = svc.InitSpaceTokenFromFile(baseDir)
-	if err != nil {
-		existsSpaceTokenCacheFile = false
-	}
-
-	var isTokenValid bool
-	if existsSpaceTokenCacheFile {
-		isTokenValid = svc.IsTokensValid(repoName, repoRegion)
-	}
-
-	if !isTokenValid {
-		// todo write file
-		if err := svc.GetNewToken(repoLocation, repoRegion, cloudApiMirror); err != nil {
-			exitCh <- &StorageResponse{Error: fmt.Errorf("space restore token service get-token error: %v", err)}
-			return
-		}
 	}
 
 	var summary *restic.RestoreSummaryOutput
 	for {
-		var resticEnv = svc.GetSpaceEnv(repoName, password)
+		envs := s.GetEnv(repoName)
 
-		logger.Debugf("space restore env vars: %s", util.Base64encode([]byte(resticEnv.ToString())))
+		logger.Debugf("space restore env vars: %s", util.Base64encode([]byte(envs.ToString())))
 
-		r, err := restic.NewRestic(ctx, repoName, olaresId, resticEnv.ToMap(), &restic.Option{})
+		r, err := restic.NewRestic(ctx, repoName, envs, &restic.Option{})
 		if err != nil {
 			exitCh <- &StorageResponse{Error: err}
 			return
@@ -105,7 +85,7 @@ func (s *Space) runRestore(ctx context.Context, exitCh chan<- *StorageResponse) 
 			switch err.Error() {
 			case restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error():
 				logger.Infof("space restore download stopped, token expired, refresh token and retring...")
-				if err := svc.RefreshToken(repoLocation, repoRegion, cloudApiMirror); err != nil { // restore
+				if err := s.refreshTokens(cloudApiMirror); err != nil { // refresh tokens
 					exitCh <- &StorageResponse{Error: fmt.Errorf("space restore download token service refresh-token error: %v", err)}
 					return
 				}

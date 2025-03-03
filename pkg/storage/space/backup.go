@@ -38,6 +38,7 @@ func (s *Space) Backup() error {
 	}
 
 	if summary != nil {
+		// todo print info
 		logger.Infof("space backup successful, data: %s", util.ToJSON(summary))
 	}
 
@@ -46,47 +47,26 @@ func (s *Space) Backup() error {
 
 func (s *Space) runBackup(ctx context.Context, exitCh chan<- *StorageResponse) {
 	var repoName = s.RepoName
-	var olaresId = s.OlaresId
 	var cloudApiMirror = s.CloudApiMirror
 	var baseDir = s.BaseDir
-	var password = s.Password
 	var path = s.Path
 	var repoLocation = "aws"
 	var repoRegion = "us-east-1"
+	_ = baseDir
 
-	svc, err := tokens.NewTokenService(olaresId)
-	if err != nil {
-		exitCh <- &StorageResponse{Error: fmt.Errorf("space backup token service error: %v", err)}
+	// get user token and space aws session-token
+	if err := s.getTokens(repoLocation, repoRegion, cloudApiMirror); err != nil {
+		exitCh <- &StorageResponse{Error: err}
 		return
-	}
-
-	var existsSpaceTokenCacheFile bool = true
-	err = svc.InitSpaceTokenFromFile(baseDir)
-	if err != nil {
-		existsSpaceTokenCacheFile = false
-	}
-
-	var isTokensValid bool
-	if existsSpaceTokenCacheFile {
-		isTokensValid = svc.IsTokensValid(repoName, repoRegion)
-	}
-
-	if !isTokensValid {
-		// todo write file
-		logger.Infof("space backup tokens invalid, get new token")
-		if err := svc.GetNewToken(repoLocation, repoRegion, cloudApiMirror); err != nil {
-			exitCh <- &StorageResponse{Error: fmt.Errorf("space backup token service get-token error: %v", err)}
-			return
-		}
 	}
 
 	var summary *restic.SummaryOutput
 	for {
-		var resticEnv = svc.GetSpaceEnv(repoName, password)
+		envs := s.GetEnv(repoName)
 
-		logger.Debugf("space backup env vars: %s", util.Base64encode([]byte(resticEnv.ToString())))
+		logger.Debugf("space backup env vars: %s", util.Base64encode([]byte(envs.ToString())))
 
-		r, err := restic.NewRestic(ctx, repoName, olaresId, resticEnv.ToMap(), &restic.Option{})
+		r, err := restic.NewRestic(ctx, repoName, envs, &restic.Option{LimitUploadRate: s.LimitUploadRate})
 		if err != nil {
 			exitCh <- &StorageResponse{Error: err}
 			return
@@ -97,8 +77,8 @@ func (s *Space) runBackup(ctx context.Context, exitCh chan<- *StorageResponse) {
 			logger.Debugf("space backup init message: %s", err.Error())
 			if err.Error() == restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error() {
 				logger.Infof("space backup init stopped, token expired, refresh token and retring...")
-				if err := svc.RefreshToken(repoLocation, repoRegion, cloudApiMirror); err != nil {
-					exitCh <- &StorageResponse{Error: fmt.Errorf("space backup init token service refresh-token error: %v", err)}
+				if err := s.refreshTokens(cloudApiMirror); err != nil {
+					exitCh <- &StorageResponse{Error: err}
 					return
 				}
 				time.Sleep(2 * time.Second)
@@ -119,12 +99,12 @@ func (s *Space) runBackup(ctx context.Context, exitCh chan<- *StorageResponse) {
 
 		logger.Infof("preparing to start space backup, repo: %s", repoName)
 
-		summary, err = r.Backup(repoName, path, "")
+		summary, err = r.Backup(path, "")
 		if err != nil {
 			switch err.Error() {
 			case restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error():
 				logger.Infof("space backup upload stopped, token expired, refresh token and retring...")
-				if err := svc.RefreshToken(repoLocation, repoRegion, cloudApiMirror); err != nil {
+				if err := s.refreshTokens(cloudApiMirror); err != nil {
 					exitCh <- &StorageResponse{Error: fmt.Errorf("space backup upload token service refresh-token error: %v", err)}
 					return
 				}

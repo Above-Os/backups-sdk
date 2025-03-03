@@ -2,7 +2,7 @@ package snapshots
 
 import (
 	"bytetrade.io/web3os/backups-sdk/cmd/options"
-	"bytetrade.io/web3os/backups-sdk/pkg/snapshots"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage"
 	"github.com/spf13/cobra"
 )
 
@@ -27,8 +27,8 @@ func NewCmdSpace() *cobra.Command {
 		Use:   "space",
 		Short: "Backup snapshots from Space",
 		Run: func(cmd *cobra.Command, args []string) {
-			var svc = snapshots.NewSnapshotsService(o.BaseDir)
-			svc.SpaceSnapshots(o)
+			var snapshotsService = storage.NewSnapshotsService(&storage.SnapshotsOption{Basedir: o.BaseDir, Space: o})
+			snapshotsService.Snapshots()
 		},
 	}
 	o.AddFlags(cmd)
@@ -41,8 +41,8 @@ func NewCmdS3() *cobra.Command {
 		Use:   "s3",
 		Short: "Backup snapshots from S3",
 		Run: func(cmd *cobra.Command, args []string) {
-			var svc = snapshots.NewSnapshotsService(o.BaseDir)
-			svc.S3Snapshots(o)
+			var snapshotsService = storage.NewSnapshotsService(&storage.SnapshotsOption{Basedir: o.BaseDir, S3: o})
+			snapshotsService.Snapshots()
 		},
 	}
 	o.AddFlags(cmd)
@@ -55,8 +55,8 @@ func NewCmdCos() *cobra.Command {
 		Use:   "cos",
 		Short: "Backup snapshots from Tencent COS",
 		Run: func(cmd *cobra.Command, args []string) {
-			var svc = snapshots.NewSnapshotsService(o.BaseDir)
-			svc.CosSnapshots(o)
+			var snapshotsService = storage.NewSnapshotsService(&storage.SnapshotsOption{Basedir: o.BaseDir, Cos: o})
+			snapshotsService.Snapshots()
 		},
 	}
 	o.AddFlags(cmd)
@@ -69,8 +69,9 @@ func NewCmdFs() *cobra.Command {
 		Use:   "fs",
 		Short: "Backup snapshots from FileSystem",
 		Run: func(cmd *cobra.Command, args []string) {
-			var svc = snapshots.NewSnapshotsService(o.BaseDir)
-			svc.FsSnapshots(o)
+			var snapshotsService = storage.NewSnapshotsService(&storage.SnapshotsOption{Basedir: o.BaseDir, Filesystem: o})
+			snapshotsService.Snapshots()
+
 		},
 	}
 	o.AddFlags(cmd)

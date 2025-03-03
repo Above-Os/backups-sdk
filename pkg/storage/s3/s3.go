@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"bytetrade.io/web3os/backups-sdk/pkg/common"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 )
 
@@ -19,7 +20,23 @@ type S3 struct {
 	AccessKey       string
 	SecretAccessKey string
 	Password        string
+	LimitUploadRate string
 	Path            string
+}
+
+// Backup implements storage.Location.
+func (s *S3) Backup() error {
+	panic("unimplemented")
+}
+
+// Restore implements storage.Location.
+func (s *S3) Restore() error {
+	panic("unimplemented")
+}
+
+// Snapshots implements storage.Location.
+func (s *S3) Snapshots() error {
+	panic("unimplemented")
 }
 
 func (s *S3) GetEnv(repository string) *restic.ResticEnv {
@@ -70,4 +87,24 @@ func (s *S3) FormatRepository() (repository string, err error) {
 	repository = fmt.Sprintf("s3:s3.%s.%s/%s/%s%s", region, awsDomain, bucket, repoPrefix, s.RepoName)
 
 	return
+}
+
+func (s *S3) GetRepoName() string {
+	return s.RepoName
+}
+
+func (s *S3) GetPath() string {
+	return s.Path
+}
+
+func (s *S3) GetSnapshotId() string {
+	return s.SnapshotId
+}
+
+func (s *S3) GetLimitUploadRate() string {
+	return s.LimitUploadRate
+}
+
+func (s *S3) GetLocation() common.Location {
+	return common.LocationS3
 }

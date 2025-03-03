@@ -16,7 +16,23 @@ type Cos struct {
 	AccessKey       string
 	SecretAccessKey string
 	Password        string
+	LimitUploadRate string
 	Path            string
+}
+
+// Backup implements storage.Location.
+func (c *Cos) Backup() error {
+	panic("unimplemented")
+}
+
+// Restore implements storage.Location.
+func (c *Cos) Restore() error {
+	panic("unimplemented")
+}
+
+// Snapshots implements storage.Location.
+func (c *Cos) Snapshots() error {
+	panic("unimplemented")
 }
 
 func (c *Cos) GetEnv(repository string) *restic.ResticEnv {
@@ -69,4 +85,24 @@ func (c *Cos) FormatRepository() (repository string, err error) {
 	repository = fmt.Sprintf("s3:https://cos.%s.%s/%s/%s%s", repoRegion, common.TencentDomain, repoBucket, repoPrefix, c.RepoName)
 
 	return
+}
+
+func (s *Cos) GetRepoName() string {
+	return s.RepoName
+}
+
+func (s *Cos) GetPath() string {
+	return s.Path
+}
+
+func (c *Cos) GetSnapshotId() string {
+	return c.SnapshotId
+}
+
+func (c *Cos) GetLimitUploadRate() string {
+	return c.LimitUploadRate
+}
+
+func (c *Cos) GetLocation() common.Location {
+	return common.LocationCos
 }

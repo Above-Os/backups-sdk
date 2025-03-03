@@ -16,6 +16,7 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -28,6 +29,13 @@ func GetBaseDir(baseDir string, defaultBaseDir string) string {
 		panic(errors.New("get current user failed"))
 	}
 	return path.Join(user.HomeDir, defaultBaseDir)
+}
+
+func GetEmailPrefix(email string) string {
+	if !strings.Contains(email, "@") {
+		return email
+	}
+	return strings.Split(email, "@")[0]
 }
 
 func AesEncrypt(origin, key []byte) ([]byte, error) {

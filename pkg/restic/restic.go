@@ -60,7 +60,7 @@ const (
 
 type Restic interface {
 	Init() (*InitSummaryOutput, bool, error)
-	Backup(name string, folder string, filePathPrefix string) (*SummaryOutput, error)
+	Backup(folder string, filePathPrefix string) (*SummaryOutput, error)
 	Repair() error
 	Unlock() (string, error)
 	Restore(snapshotId string, uploadPath string, target string) (*RestoreSummaryOutput, error)
@@ -75,7 +75,6 @@ type resticManager struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	name   string
-	user   string
 	envs   map[string]string
 	bin    string
 	opt    *Option
@@ -114,7 +113,7 @@ func (o *Option) downloadRate() string {
 	return fmt.Sprintf("--limit-download=%d", res)
 }
 
-func NewRestic(ctx context.Context, name string, userName string, envs map[string]string, opt *Option) (Restic, error) {
+func NewRestic(ctx context.Context, repoName string, envs *ResticEnv, opt *Option) (Restic, error) {
 	var commandPath, err = util.GetCommand(resticFile)
 	if err != nil {
 		return nil, err
@@ -126,9 +125,8 @@ func NewRestic(ctx context.Context, name string, userName string, envs map[strin
 	return &resticManager{
 		ctx:    ctxRestic,
 		cancel: cancel,
-		name:   name,
-		user:   userName,
-		envs:   envs,
+		name:   repoName,
+		envs:   envs.ToMap(),
 		bin:    commandPath,
 		opt:    opt,
 	}, nil
@@ -214,7 +212,7 @@ func (r *resticManager) Init() (*InitSummaryOutput, bool, error) {
 	return summary, init, nil
 }
 
-func (r *resticManager) Backup(name string, folder string, filePathPrefix string) (*SummaryOutput, error) {
+func (r *resticManager) Backup(folder string, filePathPrefix string) (*SummaryOutput, error) {
 	var backupCtx, cancel = context.WithCancel(r.ctx)
 	defer cancel()
 	opts := cmd.CommandOptions{
@@ -229,7 +227,7 @@ func (r *resticManager) Backup(name string, folder string, filePathPrefix string
 		Envs: r.envs,
 	}
 
-	opts.Args = append(opts.Args, r.withTag(name)...)
+	opts.Args = append(opts.Args, r.withTag(r.name)...)
 
 	c := cmd.NewCommand(backupCtx, opts)
 

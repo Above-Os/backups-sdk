@@ -1,13 +1,14 @@
 package space
 
 import (
-	"bytetrade.io/web3os/backups-sdk/pkg/response"
 	"context"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"bytetrade.io/web3os/backups-sdk/pkg/response"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/client"
 	"bytetrade.io/web3os/backups-sdk/pkg/common"
@@ -68,7 +69,7 @@ func (s *SpaceToken) IsSpaceTokenValid(repoName, repoRegion string) bool {
 	return s.isSpaceKeyValid(repoName, repoRegion) && !s.isSpaceTokenExpired()
 }
 
-func (s *SpaceToken) RefreshSpaceToken(spaceUserName, cloudApiMirror string) error {
+func (s *SpaceToken) RefreshSpaceToken(olaresId, cloudApiMirror string) error {
 	var backoff = wait.Backoff{
 		Duration: 3 * time.Second,
 		Factor:   2,
@@ -76,7 +77,7 @@ func (s *SpaceToken) RefreshSpaceToken(spaceUserName, cloudApiMirror string) err
 		Steps:    2,
 	}
 
-	logger.Infof("refresh space %s token, cluster: %s", spaceUserName)
+	logger.Infof("refresh space %s token, cluster: %s", olaresId)
 	var err = retry.OnError(backoff, func(err error) bool {
 		return true
 	}, func() error {
@@ -117,7 +118,7 @@ func (s *SpaceToken) RefreshSpaceToken(spaceUserName, cloudApiMirror string) err
 	return nil
 }
 
-func (s *SpaceToken) GetSpaceToken(olaresDid, olaresId, olaresName, spaceUserAccessToken,
+func (s *SpaceToken) GetSpaceToken(olaresDid, olaresId, spaceUserAccessToken,
 	spaceLocation, spaceRegion,
 	cloudApiMirror string) error {
 	var clusterId, err = s.getClusterId()
@@ -132,7 +133,7 @@ func (s *SpaceToken) GetSpaceToken(olaresDid, olaresId, olaresName, spaceUserAcc
 		Steps:    3,
 	}
 
-	logger.Infof("get space %s token, cluster: %s", olaresName, clusterId)
+	logger.Infof("get space %s token, cluster: %s", olaresId, clusterId)
 	err = retry.OnError(backoff, func(err error) bool {
 		return true
 	}, func() error {

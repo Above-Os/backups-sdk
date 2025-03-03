@@ -6,7 +6,7 @@ import (
 )
 
 // ~ space
-type SpaceOption struct {
+type SpaceBackupOption struct {
 	RepoName        string
 	Path            string
 	LimitUploadRate string
@@ -15,11 +15,11 @@ type SpaceOption struct {
 	CloudApiMirror  string
 }
 
-func NewBackupSpaceOption() *SpaceOption {
-	return &SpaceOption{}
+func NewBackupSpaceOption() *SpaceBackupOption {
+	return &SpaceBackupOption{}
 }
 
-func (o *SpaceOption) AddFlags(cmd *cobra.Command) {
+func (o *SpaceBackupOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 	cmd.Flags().StringVarP(&o.Path, "path", "", "", "The directory to be backed up")
 	cmd.Flags().StringVarP(&o.LimitUploadRate, "limit-upload-rate", "", "", "Limits uploads to a maximum rate in KiB/s. (default: unlimited)")
@@ -29,7 +29,7 @@ func (o *SpaceOption) AddFlags(cmd *cobra.Command) {
 }
 
 // ~ s3
-type S3Option struct {
+type S3BackupOption struct {
 	RepoName        string
 	Endpoint        string
 	AccessKey       string
@@ -40,11 +40,11 @@ type S3Option struct {
 	BaseDir         string
 }
 
-func NewBackupS3Option() *S3Option {
-	return &S3Option{}
+func NewBackupS3Option() *S3BackupOption {
+	return &S3BackupOption{}
 }
 
-func (o *S3Option) AddFlags(cmd *cobra.Command) {
+func (o *S3BackupOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 
 	cmd.Flags().StringVarP(&o.Endpoint, "endpoint", "", "", "Endpoint for S3, for example https://{bucket}.{region}.amazonaws.com/{prefix}")
@@ -59,7 +59,7 @@ func (o *S3Option) AddFlags(cmd *cobra.Command) {
 }
 
 // ~ cos
-type CosOption struct {
+type CosBackupOption struct {
 	RepoName        string
 	Endpoint        string
 	AccessKey       string
@@ -70,11 +70,11 @@ type CosOption struct {
 	BaseDir         string
 }
 
-func NewBackupCosOption() *CosOption {
-	return &CosOption{}
+func NewBackupCosOption() *CosBackupOption {
+	return &CosBackupOption{}
 }
 
-func (o *CosOption) AddFlags(cmd *cobra.Command) {
+func (o *CosBackupOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 
 	cmd.Flags().StringVarP(&o.Endpoint, "endpoint", "", "", "Endpoint for Tencent COS, for example https://cos.{region}.myqcloud.com/{bucket}/{prefix}")
@@ -89,7 +89,7 @@ func (o *CosOption) AddFlags(cmd *cobra.Command) {
 }
 
 // ~ filesystem
-type FilesystemOption struct {
+type FilesystemBackupOption struct {
 	RepoName string
 	Endpoint string
 	Path     string
@@ -97,11 +97,11 @@ type FilesystemOption struct {
 	BaseDir  string
 }
 
-func NewBackupFilesystemOption() *FilesystemOption {
-	return &FilesystemOption{}
+func NewBackupFilesystemOption() *FilesystemBackupOption {
+	return &FilesystemBackupOption{}
 }
 
-func (o *FilesystemOption) AddFlags(cmd *cobra.Command) {
+func (o *FilesystemBackupOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 	cmd.Flags().StringVarP(&o.Endpoint, "endpoint", "", "", "The endpoint of the filesystem is the local computer directory where the backup will be stored")
 	cmd.Flags().StringVarP(&o.Path, "path", "", "", "The directory to be backed up")

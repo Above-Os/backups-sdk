@@ -9,7 +9,6 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-// map[string]interface{}
 func Post[T any](url string, headers map[string]string, data interface{}, debug bool, insecureSkipVerify bool) (*T, error) {
 	var result T
 	client := resty.New().SetTimeout(10 * time.Second).

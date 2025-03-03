@@ -1,21 +1,24 @@
 package space
 
 import (
-	"bytetrade.io/web3os/backups-sdk/pkg/common"
-	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"fmt"
 	"path/filepath"
+
+	"bytetrade.io/web3os/backups-sdk/pkg/common"
+	"bytetrade.io/web3os/backups-sdk/pkg/restic"
+	"github.com/pkg/errors"
 )
 
 type Space struct {
-	RepoName       string
-	SnapshotId     string
-	RepoRegion     string
-	OlaresId       string
-	Password       string
-	Path           string
-	CloudApiMirror string
-	BaseDir        string
+	RepoName        string
+	SnapshotId      string
+	RepoRegion      string
+	OlaresId        string
+	Password        string
+	Path            string
+	LimitUploadRate string
+	CloudApiMirror  string
+	BaseDir         string
 
 	SpaceToken *SpaceToken
 	UserToken  *UserToken
@@ -28,14 +31,34 @@ type StorageResponse struct {
 	Error            error
 }
 
+func (s *Space) GetSnapshotId() string {
+	return s.SnapshotId
+}
+
+func (s *Space) GetPath() string {
+	return s.Path
+}
+
+func (s *Space) GetRepoName() string {
+	return s.RepoName
+}
+
+func (s *Space) GetLocation() common.Location {
+	return common.LocationSpace
+}
+
+func (s *Space) GetLimitUploadRate() string {
+	return s.LimitUploadRate
+}
+
 func (s *Space) GetEnv(repoName string) *restic.ResticEnv {
 	s.RepoName = repoName
 	repo, _ := s.FormatRepository()
 
 	var envs = &restic.ResticEnv{
-		AWS_ACCESS_KEY_ID:     s.AccessKey,
-		AWS_SECRET_ACCESS_KEY: s.SecretKey,
-		AWS_SESSION_TOKEN:     s.SessionToken,
+		AWS_ACCESS_KEY_ID:     s.SpaceToken.AccessKey,
+		AWS_SECRET_ACCESS_KEY: s.SpaceToken.SecretKey,
+		AWS_SESSION_TOKEN:     s.SpaceToken.SessionToken,
 		RESTIC_REPOSITORY:     repo,
 		RESTIC_PASSWORD:       s.Password,
 	}
@@ -43,15 +66,15 @@ func (s *Space) GetEnv(repoName string) *restic.ResticEnv {
 	return envs
 }
 func (s *Space) FormatRepository() (repository string, err error) {
-	var repoPrefix = filepath.Join(s.Prefix, "restic", s.RepoName)
-	var domain = fmt.Sprintf("s3.%s.%s", s.Region, common.AwsDomain)
-	var repo = filepath.Join(domain, s.Bucket, repoPrefix)
+	var repoPrefix = filepath.Join(s.SpaceToken.Prefix, "restic", s.RepoName)
+	var domain = fmt.Sprintf("s3.%s.%s", s.SpaceToken.Region, common.AwsDomain)
+	var repo = filepath.Join(domain, s.SpaceToken.Bucket, repoPrefix)
 	repository = fmt.Sprintf("s3:%s", repo)
 	return
 }
 
 func (s *Space) IsTokensValid(repoName, repoRegion string) bool {
-	if s.UserToken == nil || !s.UserToken.IsUserTokenValid(s.OlaresId, olaresName) {
+	if s.UserToken == nil || !s.UserToken.IsUserTokenValid(s.OlaresId) {
 		return false
 	}
 
@@ -62,31 +85,24 @@ func (s *Space) IsTokensValid(repoName, repoRegion string) bool {
 	return true
 }
 
-func (s *Space) GetNewToken(repoLocation, repoRegion, cloudApiMirror string) error {
-	err := s.UserToken.GetUserToken(s.OlaresId, olaresName)
-	if err != nil {
-		return err
+func (s *Space) getTokens(repoLocation, repoRegion, cloudApiMirror string) error {
+	if err := s.UserToken.GetUserToken(s.OlaresId); err != nil {
+		return errors.WithStack(fmt.Errorf("get user token error: %v", err))
 	}
 
-	err = s.SpaceToken.GetSpaceToken(s.UserToken.OlaresKey, s.OlaresId, olaresName, s.UserToken.SpaceUserAccessToken, repoLocation, repoRegion, cloudApiMirror)
-	if err != nil {
-		return err
+	if err := s.SpaceToken.GetSpaceToken(s.UserToken.OlaresDid, s.UserToken.OlaresId, s.UserToken.SpaceUserAccessToken, repoLocation, repoRegion, cloudApiMirror); err != nil {
+		return errors.WithStack(fmt.Errorf("get space token error: %v", err))
 	}
-
 	return nil
 }
 
-func (s *Space) RefreshToken(repoLocation, repoRegion, cloudApiMirror string) error {
-	if s.UserToken.IsSpaceUserAccessTokenExpired() {
-		err := s.UserToken.GetUserToken(s.OlaresId, olaresName)
-		if err != nil {
-			return err
-		}
+func (s *Space) refreshTokens(cloudApiMirror string) error {
+	if err := s.UserToken.GetUserToken(s.OlaresId); err != nil {
+		return errors.WithStack(fmt.Errorf("refresh user token error: %v", err))
 	}
 
-	err := s.SpaceToken.RefreshSpaceToken(olaresName, cloudApiMirror)
-	if err != nil {
-		return err
+	if err := s.SpaceToken.RefreshSpaceToken(s.UserToken.OlaresId, cloudApiMirror); err != nil {
+		return errors.WithStack(fmt.Errorf("refresh space token error: %v", err))
 	}
 
 	return nil

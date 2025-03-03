@@ -23,42 +23,41 @@ const (
 
 type UserToken struct {
 	OlaresId             string `json:"olares_id"`
-	OlaresName           string `json:"olares_name"`
-	OlaresKey            string `json:"olares_key"`
+	OlaresDid            string `json:"olares_did"`
 	SpaceUserAccessToken string `json:"space_user_access_token"`
 	ExpiresAt            int64  `json:"expires_at"`
 	CreateAt             int64  `json:"create_at"`
 }
 
-func (u *UserToken) IsUserTokenValid(olaresId, olaresName string) bool {
-	return u.isSpaceUserNameMatched(olaresId, olaresName) && !u.isSpaceUserAccessTokenExpired()
-}
-
-func (u *UserToken) IsSpaceUserAccessTokenExpired() bool {
-	return u.isSpaceUserAccessTokenExpired()
-}
-
-func (u *UserToken) GetUserToken(olaresId, olaresName string) error {
-	logger.Infof("get user %s token", olaresName)
+func (u *UserToken) GetUserToken(olaresId string) error {
+	logger.Infof("get user %s token", olaresId)
 
 	podIp, err := u.getPodIp(olaresId)
 	if err != nil {
 		return err
 	}
 
-	if err = u.getSpaceUserAccessToken(olaresId, olaresName, podIp); err != nil {
+	if err = u.getSpaceUserAccessToken(olaresId, podIp); err != nil {
 		return err
 	}
 
 	return nil
 }
 
+func (u *UserToken) IsUserTokenValid(olaresId string) bool {
+	return u.isSpaceUserNameMatched(olaresId) && !u.isSpaceUserAccessTokenExpired()
+}
+
+func (u *UserToken) IsSpaceUserAccessTokenExpired() bool {
+	return u.isSpaceUserAccessTokenExpired()
+}
+
 //
 //
 //
 
-func (u *UserToken) isSpaceUserNameMatched(olaresId, olaresName string) bool {
-	if u.OlaresId == "" || u.OlaresName == "" || u.OlaresKey == "" || u.OlaresId != olaresId || u.OlaresName != olaresName {
+func (u *UserToken) isSpaceUserNameMatched(olaresId string) bool {
+	if u.OlaresId == "" || u.OlaresDid == "" || u.OlaresId != olaresId {
 		return false
 	}
 	return true
@@ -114,7 +113,8 @@ func (u *UserToken) getPodIp(olaresId string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	pods, err := kubeClient.CoreV1().Pods(fmt.Sprintf("user-system-%s", olaresId)).List(ctx, metav1.ListOptions{
+	var olaresIdPrefix = util.GetEmailPrefix(olaresId)
+	pods, err := kubeClient.CoreV1().Pods(fmt.Sprintf("user-system-%s", olaresIdPrefix)).List(ctx, metav1.ListOptions{
 		LabelSelector: "app=systemserver",
 	})
 	if err != nil {
@@ -134,12 +134,12 @@ func (u *UserToken) getPodIp(olaresId string) (string, error) {
 	return podIp, nil
 }
 
-func (u *UserToken) getSpaceUserAccessToken(olaresId, olaresName string, podIp string) error {
+func (u *UserToken) getSpaceUserAccessToken(olaresId string, podIp string) error {
 	var headers, err = u.getRequestUserHeader()
 	if err != nil {
 		return err
 	}
-	var data = u.getRequestUserData(olaresName)
+	var data = u.getRequestUserData(olaresId)
 	var url = u.getRequestUserUrl(podIp)
 
 	result, err := net.Post[AccountResponse](url, headers, data, true, false)
@@ -173,8 +173,7 @@ func (u *UserToken) getSpaceUserAccessToken(olaresId, olaresName string, podIp s
 	}
 
 	u.OlaresId = olaresId
-	u.OlaresName = olaresName
-	u.OlaresKey = accountResp.Data.RawData.UserId
+	u.OlaresDid = accountResp.Data.RawData.UserId
 	u.SpaceUserAccessToken = accountResp.Data.RawData.AccessToken
 	u.ExpiresAt = accountResp.Data.RawData.ExpiresAt
 	u.CreateAt = accountResp.Data.RawData.CreateAt
@@ -217,8 +216,8 @@ func (u *UserToken) getRequestUserHeader() (map[string]string, error) {
 	return headers, nil
 }
 
-func (u *UserToken) getRequestUserData(olaresName string) map[string]interface{} {
+func (u *UserToken) getRequestUserData(olaresId string) map[string]interface{} {
 	var data = make(map[string]interface{})
-	data["name"] = fmt.Sprintf("integration-account:space:%s", olaresName)
+	data["name"] = fmt.Sprintf("integration-account:space:%s", olaresId)
 	return data
 }
