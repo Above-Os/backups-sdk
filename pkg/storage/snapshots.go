@@ -1,13 +1,7 @@
 package storage
 
 import (
-	"context"
-	"fmt"
-	"time"
-
 	"bytetrade.io/web3os/backups-sdk/cmd/options"
-	"bytetrade.io/web3os/backups-sdk/pkg/common"
-	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/cos"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/filesystem"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/s3"
@@ -25,25 +19,20 @@ type SnapshotsOption struct {
 }
 
 type SnapshotsService struct {
-	baseDir string
-	option  *SnapshotsOption
+	option *SnapshotsOption
 }
 
 func NewSnapshotsService(option *SnapshotsOption) *SnapshotsService {
-	baseDir := util.GetBaseDir(option.Basedir, common.DefaultBaseDir)
 
 	var snapshotsService = &SnapshotsService{
-		baseDir: baseDir,
-		option:  option,
+		option: option,
 	}
-
-	InitLog(baseDir, common.Snapshots)
 
 	return snapshotsService
 }
 
 func (s *SnapshotsService) Snapshots() {
-	password, err := InputPasswordWithConfirm(common.Snapshots)
+	password, err := util.InputPasswordWithConfirm(false)
 	if err != nil {
 		panic(err)
 	}
@@ -53,12 +42,12 @@ func (s *SnapshotsService) Snapshots() {
 	if s.option.Space != nil {
 		service = &space.Space{
 			RepoName:       s.option.Space.RepoName,
-			OlaresId:       s.option.Space.OlaresId,
+			OlaresDid:      s.option.Space.OlaresDid,
+			AccessToken:    s.option.Space.AccessToken,
+			ClusterId:      s.option.Space.ClusterId,
 			CloudApiMirror: s.option.Space.CloudApiMirror,
-			BaseDir:        s.baseDir,
 			Password:       password,
-			UserToken:      &space.UserToken{},
-			SpaceToken:     &space.SpaceToken{},
+			StsToken:       &space.StsToken{},
 		}
 	} else if s.option.S3 != nil {
 		service = &s3.S3{
@@ -87,59 +76,7 @@ func (s *SnapshotsService) Snapshots() {
 		return
 	}
 
-	if err := s.querySnapshots(service); err != nil {
+	if err := service.Snapshots(); err != nil {
 		logger.Errorf("List Spanshots error: %v", err)
 	}
-}
-
-func (s *SnapshotsService) querySnapshots(service Location) error {
-	queryLocation := service.GetLocation()
-	if queryLocation == "" {
-		return fmt.Errorf("There is no suitable recovery method.")
-	}
-
-	if queryLocation == common.LocationSpace {
-		return s.querySnapshotsFromSpace(service)
-	}
-
-	if queryLocation == common.LocationS3 ||
-		queryLocation == common.LocationCos ||
-		queryLocation == common.LocationFileSystem {
-		return s.querySnapshotsFromCloud(service)
-	}
-
-	return nil
-
-}
-
-func (s *SnapshotsService) querySnapshotsFromSpace(service Location) error {
-	return service.Snapshots()
-}
-
-func (s *SnapshotsService) querySnapshotsFromCloud(service Location) error {
-	repository, err := service.FormatRepository()
-	if err != nil {
-		return err
-	}
-
-	envs := service.GetEnv(repository)
-	location := service.GetLocation()
-	repoName := service.GetRepoName()
-
-	logger.Debugf("%s snapshots env vars: %s", location, util.Base64encode([]byte(envs.ToString())))
-
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	r, err := restic.NewRestic(ctx, repoName, envs, nil)
-	if err != nil {
-		return err
-	}
-
-	snapshots, err := r.GetSnapshots()
-	if err != nil {
-		return err
-	}
-	snapshots.PrintTable()
-
-	return nil
 }

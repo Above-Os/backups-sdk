@@ -3,7 +3,6 @@ package space
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/util"
@@ -28,7 +27,7 @@ func (s *Space) Backup() error {
 		if ok && e.Error != nil {
 			err = e.Error
 		}
-		summary = e.Summary
+		summary = e.BackupSummary
 	case <-ctx.Done():
 		err = errors.Errorf("space backup %q timed out", s.RepoName)
 	}
@@ -47,15 +46,9 @@ func (s *Space) Backup() error {
 
 func (s *Space) runBackup(ctx context.Context, exitCh chan<- *StorageResponse) {
 	var repoName = s.RepoName
-	var cloudApiMirror = s.CloudApiMirror
-	var baseDir = s.BaseDir
-	var path = s.Path
-	var repoLocation = "aws"
-	var repoRegion = "us-east-1"
-	_ = baseDir
 
-	// get user token and space aws session-token
-	if err := s.getTokens(repoLocation, repoRegion, cloudApiMirror); err != nil {
+	// get space sts token
+	if err := s.getStsToken(DefaultLocation, DefaultRegion); err != nil {
 		exitCh <- &StorageResponse{Error: err}
 		return
 	}
@@ -74,19 +67,8 @@ func (s *Space) runBackup(ctx context.Context, exitCh chan<- *StorageResponse) {
 
 		_, initRepo, err := r.Init()
 		if err != nil {
-			logger.Debugf("space backup init message: %s", err.Error())
-			if err.Error() == restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error() {
-				logger.Infof("space backup init stopped, token expired, refresh token and retring...")
-				if err := s.refreshTokens(cloudApiMirror); err != nil {
-					exitCh <- &StorageResponse{Error: err}
-					return
-				}
-				time.Sleep(2 * time.Second)
-				continue
-			} else {
-				exitCh <- &StorageResponse{Error: err}
-				return
-			}
+			exitCh <- &StorageResponse{Error: err}
+			return
 		}
 
 		if !initRepo {
@@ -99,16 +81,15 @@ func (s *Space) runBackup(ctx context.Context, exitCh chan<- *StorageResponse) {
 
 		logger.Infof("preparing to start space backup, repo: %s", repoName)
 
-		summary, err = r.Backup(path, "")
+		summary, err = r.Backup(s.Path, "")
 		if err != nil {
 			switch err.Error() {
 			case restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error():
-				logger.Infof("space backup upload stopped, token expired, refresh token and retring...")
-				if err := s.refreshTokens(cloudApiMirror); err != nil {
-					exitCh <- &StorageResponse{Error: fmt.Errorf("space backup upload token service refresh-token error: %v", err)}
+				logger.Infof("space backup upload stopped, sts token expired, refresh and retring...")
+				if err := s.refreshStsTokens(); err != nil {
+					exitCh <- &StorageResponse{Error: fmt.Errorf("space backup upload sts token service refresh-token error: %v", err)}
 					return
 				}
-				r.NewContext()
 				continue
 			default:
 				exitCh <- &StorageResponse{Error: err}
@@ -118,5 +99,5 @@ func (s *Space) runBackup(ctx context.Context, exitCh chan<- *StorageResponse) {
 		break
 	}
 
-	exitCh <- &StorageResponse{Summary: summary}
+	exitCh <- &StorageResponse{BackupSummary: summary}
 }

@@ -4,51 +4,35 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"bytetrade.io/web3os/backups-sdk/pkg/common"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"github.com/pkg/errors"
+)
+
+const (
+	SpaceDomain     = "amazonaws.com"
+	DefaultLocation = "aws"
+	DefaultRegion   = "us-east-1"
 )
 
 type Space struct {
 	RepoName        string
 	SnapshotId      string
 	RepoRegion      string
-	OlaresId        string
+	OlaresDid       string
+	AccessToken     string
+	ClusterId       string
 	Password        string
 	Path            string
 	LimitUploadRate string
 	CloudApiMirror  string
-	BaseDir         string
-
-	SpaceToken *SpaceToken
-	UserToken  *UserToken
+	StsToken        *StsToken
 }
 
 type StorageResponse struct {
-	Summary          *restic.SummaryOutput
+	BackupSummary    *restic.SummaryOutput
 	RestoreSummary   *restic.RestoreSummaryOutput
 	SnapshotsSummary []*restic.Snapshot
 	Error            error
-}
-
-func (s *Space) GetSnapshotId() string {
-	return s.SnapshotId
-}
-
-func (s *Space) GetPath() string {
-	return s.Path
-}
-
-func (s *Space) GetRepoName() string {
-	return s.RepoName
-}
-
-func (s *Space) GetLocation() common.Location {
-	return common.LocationSpace
-}
-
-func (s *Space) GetLimitUploadRate() string {
-	return s.LimitUploadRate
 }
 
 func (s *Space) GetEnv(repoName string) *restic.ResticEnv {
@@ -56,9 +40,9 @@ func (s *Space) GetEnv(repoName string) *restic.ResticEnv {
 	repo, _ := s.FormatRepository()
 
 	var envs = &restic.ResticEnv{
-		AWS_ACCESS_KEY_ID:     s.SpaceToken.AccessKey,
-		AWS_SECRET_ACCESS_KEY: s.SpaceToken.SecretKey,
-		AWS_SESSION_TOKEN:     s.SpaceToken.SessionToken,
+		AWS_ACCESS_KEY_ID:     s.StsToken.AccessKey,
+		AWS_SECRET_ACCESS_KEY: s.StsToken.SecretKey,
+		AWS_SESSION_TOKEN:     s.StsToken.SessionToken,
 		RESTIC_REPOSITORY:     repo,
 		RESTIC_PASSWORD:       s.Password,
 	}
@@ -66,43 +50,23 @@ func (s *Space) GetEnv(repoName string) *restic.ResticEnv {
 	return envs
 }
 func (s *Space) FormatRepository() (repository string, err error) {
-	var repoPrefix = filepath.Join(s.SpaceToken.Prefix, "restic", s.RepoName)
-	var domain = fmt.Sprintf("s3.%s.%s", s.SpaceToken.Region, common.AwsDomain)
-	var repo = filepath.Join(domain, s.SpaceToken.Bucket, repoPrefix)
+	var repoPrefix = filepath.Join(s.StsToken.Prefix, "restic", s.RepoName)
+	var domain = fmt.Sprintf("s3.%s.%s", s.StsToken.Region, SpaceDomain)
+	var repo = filepath.Join(domain, s.StsToken.Bucket, repoPrefix)
 	repository = fmt.Sprintf("s3:%s", repo)
 	return
 }
 
-func (s *Space) IsTokensValid(repoName, repoRegion string) bool {
-	if s.UserToken == nil || !s.UserToken.IsUserTokenValid(s.OlaresId) {
-		return false
-	}
-
-	if s.SpaceToken == nil || !s.SpaceToken.IsSpaceTokenValid(repoName, repoRegion) {
-		return false
-	}
-
-	return true
-}
-
-func (s *Space) getTokens(repoLocation, repoRegion, cloudApiMirror string) error {
-	if err := s.UserToken.GetUserToken(s.OlaresId); err != nil {
-		return errors.WithStack(fmt.Errorf("get user token error: %v", err))
-	}
-
-	if err := s.SpaceToken.GetSpaceToken(s.UserToken.OlaresDid, s.UserToken.OlaresId, s.UserToken.SpaceUserAccessToken, repoLocation, repoRegion, cloudApiMirror); err != nil {
-		return errors.WithStack(fmt.Errorf("get space token error: %v", err))
+func (s *Space) getStsToken(repoLocation, repoRegion string) error {
+	if err := s.StsToken.GetStsToken(s.OlaresDid, s.AccessToken, repoLocation, repoRegion, s.ClusterId, s.CloudApiMirror); err != nil {
+		return errors.WithStack(fmt.Errorf("get sts token error: %v", err))
 	}
 	return nil
 }
 
-func (s *Space) refreshTokens(cloudApiMirror string) error {
-	if err := s.UserToken.GetUserToken(s.OlaresId); err != nil {
-		return errors.WithStack(fmt.Errorf("refresh user token error: %v", err))
-	}
-
-	if err := s.SpaceToken.RefreshSpaceToken(s.UserToken.OlaresId, cloudApiMirror); err != nil {
-		return errors.WithStack(fmt.Errorf("refresh space token error: %v", err))
+func (s *Space) refreshStsTokens() error {
+	if err := s.StsToken.RefreshStsToken(s.CloudApiMirror); err != nil {
+		return errors.WithStack(fmt.Errorf("refresh sts token error: %v", err))
 	}
 
 	return nil

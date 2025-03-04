@@ -23,13 +23,12 @@ type RESTIC_ERROR_MESSAGE string
 const (
 	SUCCESS_MESSAGE_REPAIR_INDEX                 RESTIC_ERROR_MESSAGE = "adding pack file to index"
 	ERROR_MESSAGE_UNABLE_TO_OPEN_REPOSITORY      RESTIC_ERROR_MESSAGE = "unable to open repository"
-	ERROR_MESSAGE_BAD_REQUEST                    RESTIC_ERROR_MESSAGE = "400 Bad Request"
-	ERROR_MESSAGE_TOKEN_EXPIRED                  RESTIC_ERROR_MESSAGE = "The provided token has expired"
+	ERROR_MESSAGE_TOKEN_EXPIRED                  RESTIC_ERROR_MESSAGE = "The provided token has expired or invalid"
 	ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE     RESTIC_ERROR_MESSAGE = "unable to open config file: Stat: 400 Bad Request"
 	ERROR_MESSAGE_CONFIG_INVALID                 RESTIC_ERROR_MESSAGE = "config invalid, please chek repository or authorization config"
 	ERROR_MESSAGE_LOCKED                         RESTIC_ERROR_MESSAGE = "repository is already locked by"
 	ERROR_MESSAGE_ALREADY_INITIALIZED            RESTIC_ERROR_MESSAGE = "repository master key and config already initialized"
-	ERROR_MESSAGE_SNAPSHOT_NOT_FOUND             RESTIC_ERROR_MESSAGE = "failed to find snapshot: no matching ID found for prefix"
+	ERROR_MESSAGE_SNAPSHOT_NOT_FOUND             RESTIC_ERROR_MESSAGE = "no matching ID found for prefix"
 	ERROR_MESSAGE_CONFIG_FILE_ALREADY_EXISTS     RESTIC_ERROR_MESSAGE = "config file already exists"
 	ERROR_MESSAGE_WRONG_PASSWORD_OR_NO_KEY_FOUND RESTIC_ERROR_MESSAGE = "wrong password or no key found"
 )
@@ -179,8 +178,7 @@ func (r *resticManager) Init() (*InitSummaryOutput, bool, error) {
 						c.Cancel()
 						return
 					case
-						strings.Contains(msg, ERROR_MESSAGE_UNABLE_TO_OPEN_REPOSITORY.Error()),
-						strings.Contains(msg, ERROR_MESSAGE_BAD_REQUEST.Error()):
+						strings.Contains(msg, ERROR_MESSAGE_UNABLE_TO_OPEN_REPOSITORY.Error()):
 						errorMsg = ERROR_MESSAGE_TOKEN_EXPIRED
 						c.Cancel()
 						return
@@ -205,6 +203,7 @@ func (r *resticManager) Init() (*InitSummaryOutput, bool, error) {
 	if err != nil {
 		return nil, init, err
 	}
+
 	if errorMsg != "" {
 		return nil, init, fmt.Errorf(errorMsg.Error())
 	}
@@ -445,20 +444,8 @@ func (r *resticManager) GetSnapshot(snapshotId string) (*Snapshot, error) {
 
 				var msg = string(res)
 				logger.Debugf("[restic] snapshots %s message: %s", r.name, msg)
-				if strings.Contains(msg, "Fatal: ") {
-					switch {
-					case strings.Contains(msg, ERROR_MESSAGE_SNAPSHOT_NOT_FOUND.Error()):
-						errorMsg = ERROR_MESSAGE_SNAPSHOT_NOT_FOUND
-						c.Cancel()
-						return
-					default:
-						errorMsg = RESTIC_ERROR_MESSAGE(msg)
-						c.Cancel()
-						return
-					}
-				}
 				if err := json.Unmarshal(res, &summary); err != nil {
-					errorMsg = RESTIC_ERROR_MESSAGE(err.Error())
+					errorMsg = RESTIC_ERROR_MESSAGE(string(msg))
 					c.Cancel()
 					return
 				}

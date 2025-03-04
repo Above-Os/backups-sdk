@@ -3,7 +3,6 @@ package space
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/util"
@@ -46,16 +45,9 @@ func (s *Space) Restore() error {
 
 func (s *Space) runRestore(ctx context.Context, exitCh chan<- *StorageResponse) {
 	var repoName = s.RepoName
-	var snapshotId = s.SnapshotId
-	var cloudApiMirror = s.CloudApiMirror
-	var baseDir = s.BaseDir
-	var path = s.Path
-	var repoLocation = "aws"
-	var repoRegion = "us-east-1"
-	_ = baseDir
 
-	// get user token and space aws session-token
-	if err := s.getTokens(repoLocation, repoRegion, cloudApiMirror); err != nil {
+	// get space sts token
+	if err := s.getStsToken(DefaultLocation, DefaultRegion); err != nil {
 		exitCh <- &StorageResponse{Error: err}
 		return
 	}
@@ -72,25 +64,23 @@ func (s *Space) runRestore(ctx context.Context, exitCh chan<- *StorageResponse) 
 			return
 		}
 
-		snapshotSummary, err := r.GetSnapshot(snapshotId)
+		snapshotSummary, err := r.GetSnapshot(s.SnapshotId)
 		if err != nil {
 			exitCh <- &StorageResponse{Error: err}
 			return
 		}
 		var uploadPath = snapshotSummary.Paths[0]
-		logger.Infof("space restore spanshot %s detail: %s", snapshotId, util.ToJSON(snapshotSummary))
+		logger.Infof("space restore spanshot %s detail: %s", s.SnapshotId, util.ToJSON(snapshotSummary))
 
-		summary, err = r.Restore(snapshotId, uploadPath, path)
+		summary, err = r.Restore(s.SnapshotId, uploadPath, s.Path)
 		if err != nil {
 			switch err.Error() {
 			case restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error():
-				logger.Infof("space restore download stopped, token expired, refresh token and retring...")
-				if err := s.refreshTokens(cloudApiMirror); err != nil { // refresh tokens
-					exitCh <- &StorageResponse{Error: fmt.Errorf("space restore download token service refresh-token error: %v", err)}
+				logger.Infof("space restore download stopped, sts token expired, refresh and retring...")
+				if err := s.refreshStsTokens(); err != nil {
+					exitCh <- &StorageResponse{Error: fmt.Errorf("space restore download sts token service refresh-token error: %v", err)}
 					return
 				}
-				r.NewContext()
-				time.Sleep(2 * time.Second)
 				continue
 			default:
 				exitCh <- &StorageResponse{Error: err}

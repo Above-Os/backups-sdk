@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"bytetrade.io/web3os/backups-sdk/pkg/common"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 )
 
 const (
-	awsDomain = "amazonaws.com"
+	S3Domain = "amazonaws.com"
 )
 
 type S3 struct {
@@ -22,21 +21,6 @@ type S3 struct {
 	Password        string
 	LimitUploadRate string
 	Path            string
-}
-
-// Backup implements storage.Location.
-func (s *S3) Backup() error {
-	panic("unimplemented")
-}
-
-// Restore implements storage.Location.
-func (s *S3) Restore() error {
-	panic("unimplemented")
-}
-
-// Snapshots implements storage.Location.
-func (s *S3) Snapshots() error {
-	panic("unimplemented")
 }
 
 func (s *S3) GetEnv(repository string) *restic.ResticEnv {
@@ -77,34 +61,14 @@ func (s *S3) FormatRepository() (repository string, err error) {
 		err = fmt.Errorf("s3 endpoint %v is invalid", repoBaseSplit)
 		return
 	}
-	if repoBaseSplit[2] != awsDomain {
-		err = fmt.Errorf("s3 endpoint %s is not %s", repoBaseSplit[2], awsDomain)
+	if repoBaseSplit[2] != S3Domain {
+		err = fmt.Errorf("s3 endpoint %s is not %s", repoBaseSplit[2], S3Domain)
 		return
 	}
 	var bucket = repoBaseSplit[0]
 	var region = repoBaseSplit[1]
 
-	repository = fmt.Sprintf("s3:s3.%s.%s/%s/%s%s", region, awsDomain, bucket, repoPrefix, s.RepoName)
+	repository = fmt.Sprintf("s3:s3.%s.%s/%s/%s%s", region, S3Domain, bucket, repoPrefix, s.RepoName)
 
 	return
-}
-
-func (s *S3) GetRepoName() string {
-	return s.RepoName
-}
-
-func (s *S3) GetPath() string {
-	return s.Path
-}
-
-func (s *S3) GetSnapshotId() string {
-	return s.SnapshotId
-}
-
-func (s *S3) GetLimitUploadRate() string {
-	return s.LimitUploadRate
-}
-
-func (s *S3) GetLocation() common.Location {
-	return common.LocationS3
 }

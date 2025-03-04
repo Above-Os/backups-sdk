@@ -27,7 +27,7 @@ func NewCmdSpace() *cobra.Command {
 		Use:   "space",
 		Short: "Restore files from Space",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Basedir: o.BaseDir, Space: o})
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Space: o})
 			restoreService.Restore()
 		},
 	}
@@ -41,7 +41,7 @@ func NewCmdS3() *cobra.Command {
 		Use:   "s3",
 		Short: "Restore files from S3",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Basedir: o.BaseDir, S3: o})
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{S3: o})
 			restoreService.Restore()
 		},
 	}
@@ -55,7 +55,7 @@ func NewCmdCos() *cobra.Command {
 		Use:   "cos",
 		Short: "Restore files from Tencent COS",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Basedir: o.BaseDir, Cos: o})
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Cos: o})
 			restoreService.Restore()
 		},
 	}
@@ -69,7 +69,7 @@ func NewCmdFs() *cobra.Command {
 		Use:   "fs",
 		Short: "Restore files from FileSystem",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Basedir: o.BaseDir, Filesystem: o})
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Filesystem: o})
 			restoreService.Restore()
 		},
 	}

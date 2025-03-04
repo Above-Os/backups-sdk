@@ -1,18 +1,20 @@
 package options
 
 import (
-	"bytetrade.io/web3os/backups-sdk/pkg/common"
 	"github.com/spf13/cobra"
 )
 
 // ~ space
+var _ Option = &SpaceBackupOption{}
+
 type SpaceBackupOption struct {
-	RepoName        string
-	Path            string
-	LimitUploadRate string
-	OlaresId        string
-	BaseDir         string
-	CloudApiMirror  string
+	RepoName        string `json:"repo_name"`
+	Path            string `json:"path"`
+	LimitUploadRate string `json:"limit_upload_rate"`
+	OlaresDid       string `json:"olares_did"`
+	AccessToken     string `json:"access_token"`
+	ClusterId       string `json:"cluster_id"`
+	CloudApiMirror  string `json:"cloud_api_mirror"`
 }
 
 func NewBackupSpaceOption() *SpaceBackupOption {
@@ -23,12 +25,15 @@ func (o *SpaceBackupOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 	cmd.Flags().StringVarP(&o.Path, "path", "", "", "The directory to be backed up")
 	cmd.Flags().StringVarP(&o.LimitUploadRate, "limit-upload-rate", "", "", "Limits uploads to a maximum rate in KiB/s. (default: unlimited)")
-	cmd.Flags().StringVarP(&o.OlaresId, "olares-id", "", "", "Olares ID")
+	cmd.Flags().StringVarP(&o.OlaresDid, "olares-did", "", "", "Olares DID")
+	cmd.Flags().StringVarP(&o.AccessToken, "access-token", "", "", "Space Access Token")
+	cmd.Flags().StringVarP(&o.ClusterId, "cluster-id", "", "", "Space Cluster ID")
 	cmd.Flags().StringVarP(&o.CloudApiMirror, "cloud-api-mirror", "", "", "Cloud API mirror")
-	cmd.Flags().StringVarP(&o.BaseDir, "base-dir", "", "", "Set Olares package base dir, defaults to $HOME/"+common.DefaultBaseDir)
 }
 
 // ~ s3
+var _ Option = &S3BackupOption{}
+
 type S3BackupOption struct {
 	RepoName        string
 	Endpoint        string
@@ -36,8 +41,6 @@ type S3BackupOption struct {
 	SecretAccessKey string
 	Path            string
 	LimitUploadRate string
-	OlaresId        string
-	BaseDir         string
 }
 
 func NewBackupS3Option() *S3BackupOption {
@@ -53,12 +56,11 @@ func (o *S3BackupOption) AddFlags(cmd *cobra.Command) {
 
 	cmd.Flags().StringVarP(&o.Path, "path", "", "", "The directory to be backed up")
 	cmd.Flags().StringVarP(&o.LimitUploadRate, "limit-upload-rate", "", "", "Limits uploads to a maximum rate in KiB/s. (default: unlimited)")
-
-	cmd.Flags().StringVarP(&o.OlaresId, "olares-id", "", "", "Olares ID")
-	cmd.Flags().StringVarP(&o.BaseDir, "base-dir", "", "", "Set Olares package base dir, defaults to $HOME/"+common.DefaultBaseDir)
 }
 
 // ~ cos
+var _ Option = &CosBackupOption{}
+
 type CosBackupOption struct {
 	RepoName        string
 	Endpoint        string
@@ -66,8 +68,6 @@ type CosBackupOption struct {
 	SecretAccessKey string
 	Path            string
 	LimitUploadRate string
-	OlaresId        string
-	BaseDir         string
 }
 
 func NewBackupCosOption() *CosBackupOption {
@@ -83,18 +83,15 @@ func (o *CosBackupOption) AddFlags(cmd *cobra.Command) {
 
 	cmd.Flags().StringVarP(&o.Path, "path", "", "", "The directory to be backed up")
 	cmd.Flags().StringVarP(&o.LimitUploadRate, "limit-upload-rate", "", "", "Limits uploads to a maximum rate in KiB/s. (default: unlimited)")
-
-	cmd.Flags().StringVarP(&o.OlaresId, "olares-id", "", "", "Olares ID")
-	cmd.Flags().StringVarP(&o.BaseDir, "base-dir", "", "", "Set Olares package base dir, defaults to $HOME/"+common.DefaultBaseDir)
 }
 
 // ~ filesystem
+var _ Option = &FilesystemBackupOption{}
+
 type FilesystemBackupOption struct {
 	RepoName string
 	Endpoint string
 	Path     string
-	OlaresId string
-	BaseDir  string
 }
 
 func NewBackupFilesystemOption() *FilesystemBackupOption {
@@ -105,6 +102,4 @@ func (o *FilesystemBackupOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 	cmd.Flags().StringVarP(&o.Endpoint, "endpoint", "", "", "The endpoint of the filesystem is the local computer directory where the backup will be stored")
 	cmd.Flags().StringVarP(&o.Path, "path", "", "", "The directory to be backed up")
-	cmd.Flags().StringVarP(&o.OlaresId, "olares-id", "", "", "Olares ID")
-	cmd.Flags().StringVarP(&o.BaseDir, "base-dir", "", "", "Set Olares package base dir, defaults to $HOME/"+common.DefaultBaseDir)
 }

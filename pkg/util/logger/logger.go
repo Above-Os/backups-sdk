@@ -14,20 +14,16 @@ var logger *zap.SugaredLogger
 
 var FatalMessagePrefix = "[FATAL] "
 
-func InitLog(jsonLogDir, consoleLogFilePath string, consoleLogTruncate bool) {
-	for _, logDir := range []string{jsonLogDir, path.Dir(consoleLogFilePath)} {
-		found, err := isDirExist(logDir)
+func InitLog(jsonLogDir string, consoleLogTruncate bool) {
+	found, err := isDirExist(jsonLogDir)
+	if err != nil {
+		fmt.Println("log dir found error", err)
+	}
+	if !found {
+		err := os.MkdirAll(jsonLogDir, 0755)
 		if err != nil {
-			fmt.Println("log dir found error", err)
-			// os.Exit(1)
-		}
-
-		if !found {
-			err := os.MkdirAll(logDir, 0755)
-			if err != nil {
-				fmt.Println("create log dir error", err)
-				os.Exit(1)
-			}
+			fmt.Println("create log dir error", err)
+			os.Exit(1)
 		}
 	}
 
@@ -36,16 +32,7 @@ func InitLog(jsonLogDir, consoleLogFilePath string, consoleLogTruncate bool) {
 	if err != nil {
 		panic(err)
 	}
-	consoleFileFlag := os.O_CREATE | os.O_WRONLY
-	if consoleLogTruncate {
-		consoleFileFlag = consoleFileFlag | os.O_TRUNC
-	} else {
-		consoleFileFlag = consoleFileFlag | os.O_APPEND
-	}
-	consoleLogFile, err := os.OpenFile(consoleLogFilePath, consoleFileFlag, 0755)
-	if err != nil {
-		panic(err)
-	}
+
 	consolePriority := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
 		return lvl > zapcore.DebugLevel
 	})
@@ -82,7 +69,6 @@ func InitLog(jsonLogDir, consoleLogFilePath string, consoleLogTruncate bool) {
 
 	core := zapcore.NewTee(
 		zapcore.NewCore(zapcore.NewConsoleEncoder(consoleEncoderConfig), consoleDebugging, consolePriority),
-		zapcore.NewCore(zapcore.NewConsoleEncoder(consoleEncoderConfig), zapcore.AddSync(consoleLogFile), consolePriority),
 		zapcore.NewCore(zapcore.NewJSONEncoder(fileEncoder), zapcore.AddSync(jsonLogFile), jsonLogFilePriority),
 	)
 	logger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), zap.AddStacktrace(zapcore.FatalLevel)).Sugar()

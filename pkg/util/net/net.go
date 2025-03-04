@@ -9,10 +9,10 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-func Post[T any](url string, headers map[string]string, data interface{}, debug bool, insecureSkipVerify bool) (*T, error) {
+func Post[T any](url string, headers map[string]string, data interface{}) (*T, error) {
 	var result T
 	client := resty.New().SetTimeout(10 * time.Second).
-		SetTLSClientConfig(&tls.Config{InsecureSkipVerify: insecureSkipVerify}).R().SetDebug(debug)
+		SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}).R().SetDebug(true)
 
 	if headers != nil {
 		client.SetHeaders(headers)

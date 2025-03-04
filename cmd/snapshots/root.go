@@ -27,7 +27,7 @@ func NewCmdSpace() *cobra.Command {
 		Use:   "space",
 		Short: "Backup snapshots from Space",
 		Run: func(cmd *cobra.Command, args []string) {
-			var snapshotsService = storage.NewSnapshotsService(&storage.SnapshotsOption{Basedir: o.BaseDir, Space: o})
+			var snapshotsService = storage.NewSnapshotsService(&storage.SnapshotsOption{Space: o})
 			snapshotsService.Snapshots()
 		},
 	}
@@ -41,7 +41,7 @@ func NewCmdS3() *cobra.Command {
 		Use:   "s3",
 		Short: "Backup snapshots from S3",
 		Run: func(cmd *cobra.Command, args []string) {
-			var snapshotsService = storage.NewSnapshotsService(&storage.SnapshotsOption{Basedir: o.BaseDir, S3: o})
+			var snapshotsService = storage.NewSnapshotsService(&storage.SnapshotsOption{S3: o})
 			snapshotsService.Snapshots()
 		},
 	}
@@ -55,7 +55,7 @@ func NewCmdCos() *cobra.Command {
 		Use:   "cos",
 		Short: "Backup snapshots from Tencent COS",
 		Run: func(cmd *cobra.Command, args []string) {
-			var snapshotsService = storage.NewSnapshotsService(&storage.SnapshotsOption{Basedir: o.BaseDir, Cos: o})
+			var snapshotsService = storage.NewSnapshotsService(&storage.SnapshotsOption{Cos: o})
 			snapshotsService.Snapshots()
 		},
 	}
@@ -69,7 +69,7 @@ func NewCmdFs() *cobra.Command {
 		Use:   "fs",
 		Short: "Backup snapshots from FileSystem",
 		Run: func(cmd *cobra.Command, args []string) {
-			var snapshotsService = storage.NewSnapshotsService(&storage.SnapshotsOption{Basedir: o.BaseDir, Filesystem: o})
+			var snapshotsService = storage.NewSnapshotsService(&storage.SnapshotsOption{Filesystem: o})
 			snapshotsService.Snapshots()
 
 		},

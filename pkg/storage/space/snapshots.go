@@ -11,13 +11,8 @@ import (
 
 func (s *Space) Snapshots() error {
 	var repoName = s.RepoName
-	var cloudApiMirror = s.CloudApiMirror
-	var baseDir = s.BaseDir
-	var repoLocation = "aws"
-	var repoRegion = "us-east-1"
-	_ = baseDir
 
-	if err := s.getTokens(repoLocation, repoRegion, cloudApiMirror); err != nil {
+	if err := s.getStsToken(DefaultLocation, DefaultRegion); err != nil {
 		return errors.WithStack(err)
 	}
 
