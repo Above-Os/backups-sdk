@@ -6,13 +6,67 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"time"
+	"os/user"
+	"syscall"
+
+	"golang.org/x/term"
 )
+
+func InputPasswordWithConfirm(confirmRequired bool) (string, error) {
+	if confirmRequired {
+		fmt.Println("\nPlease create a password for this backup. This password will be required to restore your data in the future. The system will NOT save or store this password, so make sure to remember it. If you lose or forget this password, you will not be able to recover your backup.")
+	}
+
+	var password []byte
+	var confirmed []byte
+	_ = password
+
+	for {
+		fmt.Print("\nEnter password for repository: ")
+		password, err := term.ReadPassword(int(syscall.Stdin))
+		if err != nil {
+			log.Fatalf("Failed to read password: %v", err)
+			return "", err
+		}
+		password = bytes.TrimSpace(password)
+		if len(password) == 0 {
+			continue
+		}
+		confirmed = password
+		if !confirmRequired {
+			break
+		}
+		fmt.Print("\nRe-enter the password to confirm: ")
+		confirmed, err = term.ReadPassword(int(syscall.Stdin))
+		if err != nil {
+			log.Fatalf("Failed to read re-enter password: %v", err)
+			return "", err
+		}
+		if !bytes.Equal(password, confirmed) {
+			fmt.Printf("\nPasswords do not match. Please try again.\n")
+			continue
+		}
+
+		break
+	}
+	fmt.Printf("\n\n")
+
+	return string(confirmed), nil
+}
+
+func GetHomeDir() string {
+	user, err := user.Current()
+	if err != nil {
+		panic(errors.New("get current user failed"))
+	}
+
+	return user.HomeDir
+}
 
 func DefaultValue(defaultValue string, newValue string) string {
 	if newValue == "" {
@@ -64,17 +118,6 @@ func ToJSON(v any) string {
 	return buf.String()
 }
 
-// PrettyJSON returns a pretty formated json string
-func PrettyJSON(v any) string {
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(v); err != nil {
-		panic(err)
-	}
-	return buf.String()
-}
-
 func CreateDir(path string) error {
 	if IsExist(path) == false {
 		err := os.MkdirAll(path, os.ModePerm)
@@ -101,37 +144,4 @@ func IsExist(path string) bool {
 
 func Base64encode(s []byte) string {
 	return base64.StdEncoding.EncodeToString(s)
-}
-
-func WriteFile(fileName string, content []byte, perm os.FileMode) error {
-	dir := filepath.Dir(fileName)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		if err = os.MkdirAll(dir, perm); err != nil {
-			return err
-		}
-	}
-
-	if err := ioutil.WriteFile(fileName, content, perm); err != nil {
-		return err
-	}
-	return nil
-}
-
-func ReadFile(fileName string) ([]byte, error) {
-	if _, err := os.Stat(fileName); os.IsNotExist(err) {
-		return nil, fmt.Errorf("file does not exist: %s", fileName)
-	}
-
-	content, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		return nil, err
-	}
-
-	return content, nil
-}
-
-func IsTimestampAboutToExpire(timestamp int64) (time.Time, bool) {
-	expireTime := time.UnixMilli(timestamp)
-	currentTime := time.Now().Add(time.Duration(5) * time.Minute)
-	return expireTime, currentTime.After(expireTime)
 }

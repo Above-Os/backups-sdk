@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"bytetrade.io/web3os/backups-sdk/pkg/util"
 	"bytetrade.io/web3os/backups-sdk/pkg/util/cmd"
 	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
+	"github.com/olekukonko/tablewriter"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 )
@@ -19,15 +21,16 @@ import (
 type RESTIC_ERROR_MESSAGE string
 
 const (
-	SUCCESS_MESSAGE_REPAIR_INDEX             RESTIC_ERROR_MESSAGE = "adding pack file to index"
-	ERROR_MESSAGE_UNABLE_TO_OPEN_REPOSITORY  RESTIC_ERROR_MESSAGE = "unable to open repository"
-	ERROR_MESSAGE_BAD_REQUEST                RESTIC_ERROR_MESSAGE = "400 Bad Request"
-	ERROR_MESSAGE_TOKEN_EXPIRED              RESTIC_ERROR_MESSAGE = "The provided token has expired"
-	ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE RESTIC_ERROR_MESSAGE = "unable to open config file: Stat: 400 Bad Request"
-	ERROR_MESSAGE_CONFIG_INVALID             RESTIC_ERROR_MESSAGE = "config invalid, please chek repository or authorization config"
-	ERROR_MESSAGE_LOCKED                     RESTIC_ERROR_MESSAGE = "repository is already locked by"
-	ERROR_MESSAGE_ALREADY_INITIALIZED        RESTIC_ERROR_MESSAGE = "repository master key and config already initialized"
-	ERROR_MESSAGE_SNAPSHOT_NOT_FOUND         RESTIC_ERROR_MESSAGE = "failed to find snapshot: no matching ID found for prefix"
+	SUCCESS_MESSAGE_REPAIR_INDEX                 RESTIC_ERROR_MESSAGE = "adding pack file to index"
+	ERROR_MESSAGE_UNABLE_TO_OPEN_REPOSITORY      RESTIC_ERROR_MESSAGE = "unable to open repository"
+	ERROR_MESSAGE_TOKEN_EXPIRED                  RESTIC_ERROR_MESSAGE = "The provided token has expired or invalid"
+	ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE     RESTIC_ERROR_MESSAGE = "unable to open config file: Stat: 400 Bad Request"
+	ERROR_MESSAGE_CONFIG_INVALID                 RESTIC_ERROR_MESSAGE = "config invalid, please chek repository or authorization config"
+	ERROR_MESSAGE_LOCKED                         RESTIC_ERROR_MESSAGE = "repository is already locked by"
+	ERROR_MESSAGE_ALREADY_INITIALIZED            RESTIC_ERROR_MESSAGE = "repository master key and config already initialized"
+	ERROR_MESSAGE_SNAPSHOT_NOT_FOUND             RESTIC_ERROR_MESSAGE = "no matching ID found for prefix"
+	ERROR_MESSAGE_CONFIG_FILE_ALREADY_EXISTS     RESTIC_ERROR_MESSAGE = "config file already exists"
+	ERROR_MESSAGE_WRONG_PASSWORD_OR_NO_KEY_FOUND RESTIC_ERROR_MESSAGE = "wrong password or no key found"
 )
 
 const (
@@ -55,15 +58,15 @@ const (
 )
 
 type Restic interface {
-	Init() (*InitSummaryOutput, error)
-	Backup(name string, folder string, filePathPrefix string) (*SummaryOutput, error)
+	Init() (*InitSummaryOutput, bool, error)
+	Backup(folder string, filePathPrefix string) (*SummaryOutput, error)
 	Repair() error
 	Unlock() (string, error)
 	Restore(snapshotId string, uploadPath string, target string) (*RestoreSummaryOutput, error)
 	NewContext()
 	RefreshEnv(envs map[string]string)
 	GetSnapshot(snapshotId string) (*Snapshot, error)
-	GetSnapshots() ([]*Snapshot, error)
+	GetSnapshots() (*SnapshotList, error)
 	Cancel()
 }
 
@@ -71,7 +74,6 @@ type resticManager struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	name   string
-	user   string
 	envs   map[string]string
 	bin    string
 	opt    *Option
@@ -110,18 +112,20 @@ func (o *Option) downloadRate() string {
 	return fmt.Sprintf("--limit-download=%d", res)
 }
 
-func NewRestic(ctx context.Context, name string, userName string, envs map[string]string, opt *Option) (Restic, error) {
+func NewRestic(ctx context.Context, repoName string, envs *ResticEnv, opt *Option) (Restic, error) {
 	var commandPath, err = util.GetCommand(resticFile)
 	if err != nil {
 		return nil, err
+	}
+	if opt == nil {
+		opt = &Option{}
 	}
 	var ctxRestic, cancel = context.WithCancel(ctx)
 	return &resticManager{
 		ctx:    ctxRestic,
 		cancel: cancel,
-		name:   name,
-		user:   userName,
-		envs:   envs,
+		name:   repoName,
+		envs:   envs.ToMap(),
 		bin:    commandPath,
 		opt:    opt,
 	}, nil
@@ -139,7 +143,7 @@ func (r *resticManager) RefreshEnv(envs map[string]string) {
 	r.envs = envs
 }
 
-func (r *resticManager) Init() (*InitSummaryOutput, error) {
+func (r *resticManager) Init() (*InitSummaryOutput, bool, error) {
 	opts := cmd.CommandOptions{
 		Path: r.bin,
 		Args: []string{
@@ -152,6 +156,7 @@ func (r *resticManager) Init() (*InitSummaryOutput, error) {
 	c := cmd.NewCommand(r.ctx, opts)
 	var errorMsg RESTIC_ERROR_MESSAGE
 	var summary *InitSummaryOutput
+	var init bool
 
 	go func() {
 		for {
@@ -167,13 +172,13 @@ func (r *resticManager) Init() (*InitSummaryOutput, error) {
 				logger.Debugf("[restic] init %s message: %s", r.name, msg)
 				if strings.Contains(msg, "Fatal: ") {
 					switch {
-					case strings.Contains(msg, ERROR_MESSAGE_ALREADY_INITIALIZED.Error()):
-						errorMsg = ERROR_MESSAGE_ALREADY_INITIALIZED
+					case strings.Contains(msg, ERROR_MESSAGE_ALREADY_INITIALIZED.Error()),
+						strings.Contains(msg, ERROR_MESSAGE_CONFIG_FILE_ALREADY_EXISTS.Error()):
+						init = true
 						c.Cancel()
 						return
 					case
-						strings.Contains(msg, ERROR_MESSAGE_UNABLE_TO_OPEN_REPOSITORY.Error()),
-						strings.Contains(msg, ERROR_MESSAGE_BAD_REQUEST.Error()):
+						strings.Contains(msg, ERROR_MESSAGE_UNABLE_TO_OPEN_REPOSITORY.Error()):
 						errorMsg = ERROR_MESSAGE_TOKEN_EXPIRED
 						c.Cancel()
 						return
@@ -196,16 +201,17 @@ func (r *resticManager) Init() (*InitSummaryOutput, error) {
 
 	_, err := c.Run()
 	if err != nil {
-		return nil, err
-	}
-	if errorMsg != "" {
-		return nil, fmt.Errorf(errorMsg.Error())
+		return nil, init, err
 	}
 
-	return summary, nil
+	if errorMsg != "" {
+		return nil, init, fmt.Errorf(errorMsg.Error())
+	}
+
+	return summary, init, nil
 }
 
-func (r *resticManager) Backup(name string, folder string, filePathPrefix string) (*SummaryOutput, error) {
+func (r *resticManager) Backup(folder string, filePathPrefix string) (*SummaryOutput, error) {
 	var backupCtx, cancel = context.WithCancel(r.ctx)
 	defer cancel()
 	opts := cmd.CommandOptions{
@@ -220,7 +226,7 @@ func (r *resticManager) Backup(name string, folder string, filePathPrefix string
 		Envs: r.envs,
 	}
 
-	opts.Args = append(opts.Args, r.withTag(name)...)
+	opts.Args = append(opts.Args, r.withTag(r.name)...)
 
 	c := cmd.NewCommand(backupCtx, opts)
 
@@ -438,20 +444,8 @@ func (r *resticManager) GetSnapshot(snapshotId string) (*Snapshot, error) {
 
 				var msg = string(res)
 				logger.Debugf("[restic] snapshots %s message: %s", r.name, msg)
-				if strings.Contains(msg, "Fatal: ") {
-					switch {
-					case strings.Contains(msg, ERROR_MESSAGE_SNAPSHOT_NOT_FOUND.Error()):
-						errorMsg = ERROR_MESSAGE_SNAPSHOT_NOT_FOUND
-						c.Cancel()
-						return
-					default:
-						errorMsg = RESTIC_ERROR_MESSAGE(msg)
-						c.Cancel()
-						return
-					}
-				}
 				if err := json.Unmarshal(res, &summary); err != nil {
-					errorMsg = RESTIC_ERROR_MESSAGE(err.Error())
+					errorMsg = RESTIC_ERROR_MESSAGE(string(msg))
 					c.Cancel()
 					return
 				}
@@ -476,7 +470,20 @@ func (r *resticManager) GetSnapshot(snapshotId string) (*Snapshot, error) {
 	return summary[0], nil
 }
 
-func (r *resticManager) GetSnapshots() ([]*Snapshot, error) {
+type SnapshotList []*Snapshot
+
+func (l SnapshotList) PrintTable() {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"ID", "Time", "Host", "Tags", "Path", "Size"})
+
+	for _, s := range l {
+		var data = []string{s.ShortId, s.Time, s.Hostname, strings.Join(s.Tags, "\n"), strings.Join(s.Paths, "\n"), util.FormatBytes(uint64(s.Summary.TotalBytesProcessed))}
+		table.Append(data)
+	}
+	table.Render()
+}
+
+func (r *resticManager) GetSnapshots() (*SnapshotList, error) {
 	var restoreCtx, cancel = context.WithCancel(r.ctx)
 	defer cancel()
 	opts := cmd.CommandOptions{
@@ -491,7 +498,7 @@ func (r *resticManager) GetSnapshots() ([]*Snapshot, error) {
 
 	c := cmd.NewCommand(restoreCtx, opts)
 
-	var summary []*Snapshot
+	var summary *SnapshotList
 	var errorMsg RESTIC_ERROR_MESSAGE
 
 	go func() {
@@ -511,6 +518,10 @@ func (r *resticManager) GetSnapshots() ([]*Snapshot, error) {
 					switch {
 					case strings.Contains(msg, ERROR_MESSAGE_SNAPSHOT_NOT_FOUND.Error()):
 						errorMsg = ERROR_MESSAGE_SNAPSHOT_NOT_FOUND
+						c.Cancel()
+						return
+					case strings.Contains(msg, ERROR_MESSAGE_WRONG_PASSWORD_OR_NO_KEY_FOUND.Error()):
+						errorMsg = ERROR_MESSAGE_WRONG_PASSWORD_OR_NO_KEY_FOUND
 						c.Cancel()
 						return
 					default:
@@ -537,11 +548,9 @@ func (r *resticManager) GetSnapshots() ([]*Snapshot, error) {
 	if errorMsg != "" {
 		return nil, fmt.Errorf(errorMsg.Error())
 	}
-
-	if summary == nil || len(summary) == 0 {
+	if summary == nil || len(*summary) == 0 {
 		return nil, fmt.Errorf("snapshots not found")
 	}
-
 	return summary, nil
 }
 
