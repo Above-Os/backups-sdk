@@ -2,7 +2,7 @@ package space
 
 import (
 	"fmt"
-	"strings"
+	"os"
 	"time"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/util"
@@ -13,7 +13,6 @@ import (
 )
 
 var DefaultCloudApiUrl = "https://cloud-api.bttcdn.com"
-var debugDuration = true
 
 type CloudStorageAccountResponse struct {
 	Header
@@ -67,7 +66,7 @@ func (s *StsToken) RefreshStsToken(cloudApiMirror string) error {
 	queryResp := result
 
 	if queryResp.Data == nil {
-		return errors.WithStack(fmt.Errorf("get sts token invalid, code: %d, msg: %s, data: %s", queryResp.Code, queryResp.Message, data))
+		return errors.WithStack(fmt.Errorf("get sts token invalid, code: %d, msg: %s, params: %s", queryResp.Code, queryResp.Message, data))
 	}
 
 	s.Cloud = queryResp.Data.Cloud
@@ -98,6 +97,10 @@ func (s *StsToken) GetStsToken(olaresDid, accessToken,
 
 	queryResp := result
 
+	if queryResp.Code == 506 {
+		return fmt.Errorf("user access token expired")
+	}
+
 	if queryResp.Data == nil {
 		return errors.WithStack(fmt.Errorf("get sts token invalid, code: %d, msg: %s, data: %s", queryResp.Code, queryResp.Message, data))
 	}
@@ -120,8 +123,9 @@ func (s *StsToken) parseClusterId(clusterId string) string {
 	return util.Base64encode([]byte(clusterId))
 }
 
-func (s *StsToken) parseSpaceStsDuration(isDebug bool) time.Duration {
-	if isDebug {
+func (s *StsToken) parseSpaceStsDuration() time.Duration {
+	debugCustomStsDuration := os.Getenv("DEBUG_STS_TOKEN_DURATION")
+	if debugCustomStsDuration != "" {
 		var dur = 15 * time.Minute
 		return dur
 	}
@@ -129,7 +133,7 @@ func (s *StsToken) parseSpaceStsDuration(isDebug bool) time.Duration {
 }
 
 func (s *StsToken) getRequestSpaceStsUrl(cloudApiMirror string) string {
-	return fmt.Sprintf("%s/v1/resource/stsToken/backup", s.getCloudApi(cloudApiMirror))
+	return fmt.Sprintf("%s/v1/resource/stsToken/backup")
 }
 
 func (s *StsToken) getRequestSpaceStsHeaders() map[string]string {
@@ -141,22 +145,17 @@ func (s *StsToken) getRequestSpaceStsHeaders() map[string]string {
 
 func (s *StsToken) getRequestSpaceStsData(olaresDid, token, location, region, clusterId string) string {
 	var data = fmt.Sprintf("cloudName=%s&durationSeconds=%s&region=%s&token=%s&userid=%s&clusterId=%s",
-		location, fmt.Sprintf("%.0f", s.parseSpaceStsDuration(debugDuration).Seconds()), region, token, olaresDid, s.parseClusterId(clusterId))
+		location, fmt.Sprintf("%.0f", s.parseSpaceStsDuration().Seconds()), region, token, olaresDid, s.parseClusterId(clusterId))
 	return data
 }
 
 func (s *StsToken) getRequestSpaceRefreshStsUrl(cloudApiMirror string) string {
-	return fmt.Sprintf("%s/v1/resource/stsToken/backup/refresh", s.getCloudApi(cloudApiMirror))
+	return fmt.Sprintf("%s/v1/resource/stsToken/backup/refresh", cloudApiMirror)
 }
 
 func (s *StsToken) getRequestSpaceRefreshStsData() string {
 	var data = fmt.Sprintf("ak=%s&sk=%s&st=%s&durationSeconds=%s",
-		s.AccessKey, s.SecretKey, s.SessionToken, fmt.Sprintf("%.0f", s.parseSpaceStsDuration(debugDuration).Seconds()))
+		s.AccessKey, s.SecretKey, s.SessionToken, fmt.Sprintf("%.0f", s.parseSpaceStsDuration().Seconds()))
 
 	return data
-}
-
-func (s *StsToken) getCloudApi(cloudApiMirror string) string {
-	var serverDomain = util.DefaultValue(DefaultCloudApiUrl, cloudApiMirror)
-	return strings.TrimRight(serverDomain, "/")
 }

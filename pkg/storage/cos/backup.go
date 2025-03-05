@@ -1,43 +1,22 @@
 package cos
 
 import (
-	"context"
-
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
-	"bytetrade.io/web3os/backups-sdk/pkg/util"
-	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
 )
 
-func (c *Cos) Backup() error {
+func (c *Cos) Backup() (err error) {
 	repository, err := c.FormatRepository()
 	if err != nil {
 		return err
 	}
 
-	envs := c.GetEnv(repository)
-
-	r, err := restic.NewRestic(context.Background(), c.RepoName, envs, &restic.Option{LimitUploadRate: c.LimitUploadRate})
-	if err != nil {
-		return err
+	var envs = c.GetEnv(repository)
+	var opts = &restic.ResticOptions{
+		RepoName:        c.RepoName,
+		RepoEnvs:        envs,
+		LimitUploadRate: c.LimitUploadRate,
 	}
 
-	_, initRepo, err := r.Init()
-	if err != nil {
-		return err
-	}
-
-	if !initRepo {
-		if err = r.Repair(); err != nil {
-			return err
-		}
-	}
-
-	backupResult, err := r.Backup(c.Path, "")
-	if err != nil {
-		return err
-	}
-	logger.Infof("Backup to Tencent COS success, result id: %s", util.ToJSON(backupResult))
-
-	return nil
-
+	c.BaseHandler.SetOptions(opts)
+	return c.BaseHandler.Backup()
 }

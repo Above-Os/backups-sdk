@@ -44,6 +44,8 @@ func (b *BackupService) Backup() {
 			OlaresDid:       b.option.Space.OlaresDid,
 			AccessToken:     b.option.Space.AccessToken,
 			ClusterId:       b.option.Space.ClusterId,
+			CloudName:       b.option.Space.CloudName,
+			RegionId:        b.option.Space.RegionId,
 			Path:            b.option.Space.Path,
 			CloudApiMirror:  b.option.Space.CloudApiMirror,
 			LimitUploadRate: b.option.Space.LimitUploadRate,
@@ -59,6 +61,7 @@ func (b *BackupService) Backup() {
 			Path:            b.option.S3.Path,
 			LimitUploadRate: b.option.S3.LimitUploadRate,
 			Password:        password,
+			BaseHandler:     &BaseHandler{},
 		}
 	} else if b.option.Cos != nil {
 		service = &cos.Cos{
@@ -69,19 +72,21 @@ func (b *BackupService) Backup() {
 			Path:            b.option.Cos.Path,
 			LimitUploadRate: b.option.Cos.LimitUploadRate,
 			Password:        password,
+			BaseHandler:     &BaseHandler{},
 		}
 	} else if b.option.Filesystem != nil {
 		service = &filesystem.Filesystem{
-			RepoName: b.option.Filesystem.RepoName,
-			Endpoint: b.option.Filesystem.Endpoint,
-			Path:     b.option.Filesystem.Path,
-			Password: password,
+			RepoName:    b.option.Filesystem.RepoName,
+			Endpoint:    b.option.Filesystem.Endpoint,
+			Path:        b.option.Filesystem.Path,
+			Password:    password,
+			BaseHandler: &BaseHandler{},
 		}
 	} else {
 		logger.Fatalf("There is no suitable recovery method.")
 	}
 
 	if err := service.Backup(); err != nil {
-		logger.Errorf("Backup to Space error: %v", err)
+		logger.Errorf("Backup error: %v", err)
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"path"
 
 	"bytetrade.io/web3os/backups-sdk/cmd/backup"
+	"bytetrade.io/web3os/backups-sdk/cmd/region"
 	"bytetrade.io/web3os/backups-sdk/cmd/restore"
 	"bytetrade.io/web3os/backups-sdk/cmd/snapshots"
 	"bytetrade.io/web3os/backups-sdk/pkg/util"
@@ -32,6 +33,7 @@ func main() {
 	cmds.AddCommand(backup.NewCmdBackup())
 	cmds.AddCommand(restore.NewCmdRestore())
 	cmds.AddCommand(snapshots.NewCmdSnapshots())
+	cmds.AddCommand(region.NewCmdRegions())
 
 	if err := cmds.Execute(); err != nil {
 		fmt.Println(err)

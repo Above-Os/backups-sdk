@@ -47,18 +47,23 @@ func (s *Space) runRestore(ctx context.Context, exitCh chan<- *StorageResponse) 
 	var repoName = s.RepoName
 
 	// get space sts token
-	if err := s.getStsToken(DefaultLocation, DefaultRegion); err != nil {
+	if err := s.getStsToken(s.CloudName, s.RegionId); err != nil {
 		exitCh <- &StorageResponse{Error: err}
 		return
 	}
 
 	var summary *restic.RestoreSummaryOutput
 	for {
-		envs := s.GetEnv(repoName)
+		var envs = s.GetEnv(repoName)
+		var opts = &restic.ResticOptions{
+			RepoName:        s.RepoName,
+			RepoEnvs:        envs,
+			LimitUploadRate: s.LimitUploadRate,
+		}
 
-		logger.Debugf("space restore env vars: %s", util.Base64encode([]byte(envs.ToString())))
+		logger.Debugf("space restore env vars: %s", util.Base64encode([]byte(envs.String())))
 
-		r, err := restic.NewRestic(ctx, repoName, envs, &restic.Option{})
+		r, err := restic.NewRestic(ctx, opts)
 		if err != nil {
 			exitCh <- &StorageResponse{Error: err}
 			return

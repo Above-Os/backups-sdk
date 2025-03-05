@@ -12,6 +12,8 @@ type SpaceSnapshotsOption struct {
 	OlaresDid      string
 	AccessToken    string
 	ClusterId      string
+	CloudName      string
+	RegionId       string
 	CloudApiMirror string
 }
 
@@ -24,6 +26,8 @@ func (o *SpaceSnapshotsOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.OlaresDid, "olares-did", "", "", "Olares DID")
 	cmd.Flags().StringVarP(&o.AccessToken, "access-token", "", "", "Space Access Token")
 	cmd.Flags().StringVarP(&o.ClusterId, "cluster-id", "", "", "Space Cluster ID")
+	cmd.Flags().StringVarP(&o.CloudName, "region", "", "", "Space Cloud Name")
+	cmd.Flags().StringVarP(&o.RegionId, "region", "", "", "Space Region Id")
 	cmd.Flags().StringVarP(&o.CloudApiMirror, "cloud-api-mirror", "", "", "Cloud API mirror")
 }
 

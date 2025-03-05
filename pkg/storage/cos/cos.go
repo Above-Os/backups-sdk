@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
 )
 
 const (
@@ -21,12 +22,15 @@ type Cos struct {
 	Password        string
 	LimitUploadRate string
 	Path            string
+	BaseHandler     base.Interface
 }
 
-// Backup implements storage.Location.
+func (c *Cos) Regions() error {
+	return nil
+}
 
-func (c *Cos) GetEnv(repository string) *restic.ResticEnv {
-	var envs = &restic.ResticEnv{
+func (c *Cos) GetEnv(repository string) *restic.ResticEnvs {
+	var envs = &restic.ResticEnvs{
 		AWS_ACCESS_KEY_ID:     c.AccessKey,
 		AWS_SECRET_ACCESS_KEY: c.SecretAccessKey,
 		RESTIC_REPOSITORY:     repository,

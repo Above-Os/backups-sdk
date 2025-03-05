@@ -1,12 +1,7 @@
 package filesystem
 
 import (
-	"context"
-	"time"
-
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
-	"bytetrade.io/web3os/backups-sdk/pkg/util"
-	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
 )
 
 func (f *Filesystem) Snapshots() error {
@@ -15,22 +10,12 @@ func (f *Filesystem) Snapshots() error {
 		return err
 	}
 
-	envs := f.GetEnv(repository)
-
-	logger.Debugf("snapshots from filesystem env vars: %s", util.Base64encode([]byte(envs.ToString())))
-
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	r, err := restic.NewRestic(ctx, f.RepoName, envs, nil)
-	if err != nil {
-		return err
+	var envs = f.GetEnv(repository)
+	var opts = &restic.ResticOptions{
+		RepoName: f.RepoName,
+		RepoEnvs: envs,
 	}
 
-	snapshots, err := r.GetSnapshots()
-	if err != nil {
-		return err
-	}
-	snapshots.PrintTable()
-
-	return nil
+	f.BaseHandler.SetOptions(opts)
+	return f.BaseHandler.Snapshots()
 }

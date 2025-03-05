@@ -3,11 +3,14 @@ package restic
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/util"
@@ -22,8 +25,8 @@ type RESTIC_ERROR_MESSAGE string
 
 const (
 	SUCCESS_MESSAGE_REPAIR_INDEX                 RESTIC_ERROR_MESSAGE = "adding pack file to index"
-	ERROR_MESSAGE_UNABLE_TO_OPEN_REPOSITORY      RESTIC_ERROR_MESSAGE = "unable to open repository"
-	ERROR_MESSAGE_TOKEN_EXPIRED                  RESTIC_ERROR_MESSAGE = "The provided token has expired or invalid"
+	ERROR_MESSAGE_UNABLE_TO_OPEN_REPOSITORY      RESTIC_ERROR_MESSAGE = "unable to open repository at"
+	ERROR_MESSAGE_TOKEN_EXPIRED                  RESTIC_ERROR_MESSAGE = "The provided token has expired"
 	ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE     RESTIC_ERROR_MESSAGE = "unable to open config file: Stat: 400 Bad Request"
 	ERROR_MESSAGE_CONFIG_INVALID                 RESTIC_ERROR_MESSAGE = "config invalid, please chek repository or authorization config"
 	ERROR_MESSAGE_LOCKED                         RESTIC_ERROR_MESSAGE = "repository is already locked by"
@@ -31,6 +34,11 @@ const (
 	ERROR_MESSAGE_SNAPSHOT_NOT_FOUND             RESTIC_ERROR_MESSAGE = "no matching ID found for prefix"
 	ERROR_MESSAGE_CONFIG_FILE_ALREADY_EXISTS     RESTIC_ERROR_MESSAGE = "config file already exists"
 	ERROR_MESSAGE_WRONG_PASSWORD_OR_NO_KEY_FOUND RESTIC_ERROR_MESSAGE = "wrong password or no key found"
+)
+
+const (
+	MESSAGE_TOKEN_EXPIRED                  = "[INFO] sts token expired"
+	MESSAGE_REPOSITORY_ALREADY_INITIALIZED = "[INFO] repository already initialized"
 )
 
 const (
@@ -57,34 +65,17 @@ const (
 	PRINT_SUCCESS_MESSAGE          = ""
 )
 
-type Restic interface {
-	Init() (*InitSummaryOutput, bool, error)
-	Backup(folder string, filePathPrefix string) (*SummaryOutput, error)
-	Repair() error
-	Unlock() (string, error)
-	Restore(snapshotId string, uploadPath string, target string) (*RestoreSummaryOutput, error)
-	NewContext()
-	RefreshEnv(envs map[string]string)
-	GetSnapshot(snapshotId string) (*Snapshot, error)
-	GetSnapshots() (*SnapshotList, error)
-	Cancel()
-}
-
-type resticManager struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-	name   string
-	envs   map[string]string
-	bin    string
-	opt    *Option
-}
-
-type Option struct {
+type ResticOptions struct {
+	RepoName          string
+	SnapshotId        string
+	Path              string
 	LimitDownloadRate string
 	LimitUploadRate   string
+
+	RepoEnvs *ResticEnvs
 }
 
-func (o *Option) uploadRate() string {
+func (o *ResticOptions) SetLimitUploadRate() string {
 	var defaultUploadRate = "--limit-upload=0"
 	if o.LimitUploadRate == "" {
 		return defaultUploadRate
@@ -98,7 +89,7 @@ func (o *Option) uploadRate() string {
 	return fmt.Sprintf("--limit-upload=%d", res)
 }
 
-func (o *Option) downloadRate() string {
+func (o *ResticOptions) SetLimitDownloadRate() string {
 	var defaultDownloadRate = "--limit-download=0"
 	if o.LimitDownloadRate == "" {
 		return defaultDownloadRate
@@ -112,121 +103,69 @@ func (o *Option) downloadRate() string {
 	return fmt.Sprintf("--limit-download=%d", res)
 }
 
-func NewRestic(ctx context.Context, repoName string, envs *ResticEnv, opt *Option) (Restic, error) {
+type Restic struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+	dir    string
+	opt    *ResticOptions
+}
+
+func NewRestic(ctx context.Context, opt *ResticOptions) (*Restic, error) {
 	var commandPath, err = util.GetCommand(resticFile)
 	if err != nil {
 		return nil, err
 	}
-	if opt == nil {
-		opt = &Option{}
-	}
 	var ctxRestic, cancel = context.WithCancel(ctx)
-	return &resticManager{
+	return &Restic{
 		ctx:    ctxRestic,
 		cancel: cancel,
-		name:   repoName,
-		envs:   envs.ToMap(),
-		bin:    commandPath,
+		dir:    commandPath,
 		opt:    opt,
 	}, nil
 }
 
-func (r *resticManager) NewContext() {
-	r.ctx, r.cancel = context.WithCancel(r.ctx)
-}
+func (r *Restic) Init() (string, error) {
+	var args = []string{"init", "-v=3", PARAM_INSECURE_TLS}
+	cmd := exec.CommandContext(context.Background(), r.dir, args...)
+	cmd.Env = append(cmd.Env, r.opt.RepoEnvs.Slice()...)
 
-func (r *resticManager) Cancel() {
-	r.cancel()
-}
-
-func (r *resticManager) RefreshEnv(envs map[string]string) {
-	r.envs = envs
-}
-
-func (r *resticManager) Init() (*InitSummaryOutput, bool, error) {
-	opts := cmd.CommandOptions{
-		Path: r.bin,
-		Args: []string{
-			"init",
-			PARAM_JSON_OUTPUT,
-			PARAM_INSECURE_TLS,
-		},
-		Envs: r.envs,
-	}
-	c := cmd.NewCommand(r.ctx, opts)
-	var errorMsg RESTIC_ERROR_MESSAGE
-	var summary *InitSummaryOutput
-	var init bool
-
-	go func() {
-		for {
-			select {
-			case res, ok := <-c.Ch:
-				if !ok {
-					return
-				}
-				if res == nil || len(res) == 0 {
-					continue
-				}
-				var msg = string(res)
-				logger.Debugf("[restic] init %s message: %s", r.name, msg)
-				if strings.Contains(msg, "Fatal: ") {
-					switch {
-					case strings.Contains(msg, ERROR_MESSAGE_ALREADY_INITIALIZED.Error()),
-						strings.Contains(msg, ERROR_MESSAGE_CONFIG_FILE_ALREADY_EXISTS.Error()):
-						init = true
-						c.Cancel()
-						return
-					case
-						strings.Contains(msg, ERROR_MESSAGE_UNABLE_TO_OPEN_REPOSITORY.Error()):
-						errorMsg = ERROR_MESSAGE_TOKEN_EXPIRED
-						c.Cancel()
-						return
-					default:
-						errorMsg = RESTIC_ERROR_MESSAGE(msg)
-						c.Cancel()
-						return
-					}
-				}
-				if err := json.Unmarshal(res, &summary); err != nil {
-					errorMsg = RESTIC_ERROR_MESSAGE(err.Error())
-					c.Cancel()
-					return
-				}
-			case <-r.ctx.Done():
-				return
-			}
-		}
-	}()
-
-	_, err := c.Run()
+	var outerr string
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, init, err
+		var errmsg = string(output)
+		switch {
+		case strings.Contains(errmsg, ERROR_MESSAGE_ALREADY_INITIALIZED.Error()):
+			outerr = MESSAGE_REPOSITORY_ALREADY_INITIALIZED
+		case strings.Contains(errmsg, ERROR_MESSAGE_UNABLE_TO_OPEN_REPOSITORY.Error()):
+			outerr = MESSAGE_TOKEN_EXPIRED
+		default:
+			outerr = errmsg
+		}
 	}
 
-	if errorMsg != "" {
-		return nil, init, fmt.Errorf(errorMsg.Error())
+	if outerr != "" {
+		return "", errors.New(outerr)
 	}
 
-	return summary, init, nil
+	return string(output), nil
 }
 
-func (r *resticManager) Backup(folder string, filePathPrefix string) (*SummaryOutput, error) {
+func (r *Restic) Backup(folder string, filePathPrefix string) (*SummaryOutput, error) {
 	var backupCtx, cancel = context.WithCancel(r.ctx)
 	defer cancel()
 	opts := cmd.CommandOptions{
-		Path: r.bin,
+		Path: r.dir,
 		Args: []string{
 			"backup",
 			folder,
-			r.opt.uploadRate(),
+			r.opt.SetLimitUploadRate(),
 			PARAM_JSON_OUTPUT,
 			PARAM_INSECURE_TLS,
 		},
-		Envs: r.envs,
+		Envs: r.opt.RepoEnvs.Kv(),
 	}
 
-	opts.Args = append(opts.Args, r.withTag(r.name)...)
+	opts.Args = append(opts.Args, r.withTag(r.opt.RepoName)...)
 
 	c := cmd.NewCommand(backupCtx, opts)
 
@@ -249,7 +188,7 @@ func (r *resticManager) Backup(folder string, filePathPrefix string) (*SummaryOu
 				status := messagePool.Get()
 				if err := json.Unmarshal(res, status); err != nil {
 					var msg = string(res)
-					logger.Debugf("[restic] backup %s error message: %s", r.name, msg)
+					logger.Debugf("[restic] backup %s error message: %s", r.opt.RepoName, msg)
 					messagePool.Put(status)
 					switch {
 					case strings.Contains(msg, ERROR_MESSAGE_TOKEN_EXPIRED.Error()):
@@ -290,7 +229,7 @@ func (r *resticManager) Backup(folder string, filePathPrefix string) (*SummaryOu
 					}
 				case "summary":
 					if err := json.Unmarshal(res, &summary); err != nil {
-						logger.Debugf("[restic] backup %s error summary unmarshal message: %s", r.name, string(res))
+						logger.Debugf("[restic] backup %s error summary unmarshal message: %s", r.opt.RepoName, string(res))
 						messagePool.Put(status)
 						errorMsg = RESTIC_ERROR_MESSAGE(err.Error())
 						c.Cancel()
@@ -316,7 +255,7 @@ func (r *resticManager) Backup(folder string, filePathPrefix string) (*SummaryOu
 	return summary, nil
 }
 
-func (r *resticManager) Repair() error {
+func (r *Restic) Repair() error {
 	backoff := wait.Backoff{
 		Duration: 2 * time.Second,
 		Factor:   2,
@@ -343,11 +282,11 @@ func (r *resticManager) Repair() error {
 	return nil
 }
 
-func (r *resticManager) repairIndex() (string, error) {
+func (r *Restic) repairIndex() (string, error) {
 	opts := cmd.CommandOptions{
-		Path:  r.bin,
+		Path:  r.dir,
 		Args:  []string{"repair", "index", PARAM_INSECURE_TLS},
-		Envs:  r.envs,
+		Envs:  r.opt.RepoEnvs.Kv(),
 		Print: true,
 	}
 	c := cmd.NewCommand(r.ctx, opts)
@@ -363,7 +302,7 @@ func (r *resticManager) repairIndex() (string, error) {
 				if res == nil || len(res) == 0 {
 					continue
 				}
-				logger.Debugf("[restic] repair %s message: %s", r.name, string(res))
+				logger.Debugf("[restic] repair %s message: %s", r.opt.RepoName, string(res))
 				sb.WriteString(string(res) + "\n")
 			case <-r.ctx.Done():
 				return
@@ -378,11 +317,11 @@ func (r *resticManager) repairIndex() (string, error) {
 	return sb.String(), nil
 }
 
-func (r *resticManager) Unlock() (string, error) {
+func (r *Restic) Unlock() (string, error) {
 	opts := cmd.CommandOptions{
-		Path: r.bin,
+		Path: r.dir,
 		Args: []string{"unlock", "--remove-all", PARAM_INSECURE_TLS},
-		Envs: r.envs,
+		Envs: r.opt.RepoEnvs.Kv(),
 	}
 	c := cmd.NewCommand(r.ctx, opts)
 	sb := new(strings.Builder)
@@ -397,7 +336,7 @@ func (r *resticManager) Unlock() (string, error) {
 				if res == nil || len(res) == 0 {
 					continue
 				}
-				logger.Debugf("[restic] unlock %s message: %s", r.name, string(res))
+				logger.Debugf("[restic] unlock %s message: %s", r.opt.RepoName, string(res))
 				sb.WriteString(string(res) + "\n")
 			case <-r.ctx.Done():
 				return
@@ -412,18 +351,18 @@ func (r *resticManager) Unlock() (string, error) {
 	return sb.String(), nil
 }
 
-func (r *resticManager) GetSnapshot(snapshotId string) (*Snapshot, error) {
+func (r *Restic) GetSnapshot(snapshotId string) (*Snapshot, error) {
 	var restoreCtx, cancel = context.WithCancel(r.ctx)
 	defer cancel()
 	opts := cmd.CommandOptions{
-		Path: r.bin,
+		Path: r.dir,
 		Args: []string{
 			"snapshots",
 			PARAM_JSON_OUTPUT,
 			PARAM_INSECURE_TLS,
 			snapshotId,
 		},
-		Envs: r.envs,
+		Envs: r.opt.RepoEnvs.Kv(),
 	}
 
 	c := cmd.NewCommand(restoreCtx, opts)
@@ -443,7 +382,7 @@ func (r *resticManager) GetSnapshot(snapshotId string) (*Snapshot, error) {
 				}
 
 				var msg = string(res)
-				logger.Debugf("[restic] snapshots %s message: %s", r.name, msg)
+				logger.Debugf("[restic] snapshots %s message: %s", r.opt.RepoName, msg)
 				if err := json.Unmarshal(res, &summary); err != nil {
 					errorMsg = RESTIC_ERROR_MESSAGE(string(msg))
 					c.Cancel()
@@ -483,17 +422,17 @@ func (l SnapshotList) PrintTable() {
 	table.Render()
 }
 
-func (r *resticManager) GetSnapshots() (*SnapshotList, error) {
+func (r *Restic) GetSnapshots() (*SnapshotList, error) {
 	var restoreCtx, cancel = context.WithCancel(r.ctx)
 	defer cancel()
 	opts := cmd.CommandOptions{
-		Path: r.bin,
+		Path: r.dir,
 		Args: []string{
 			"snapshots",
 			PARAM_JSON_OUTPUT,
 			PARAM_INSECURE_TLS,
 		},
-		Envs: r.envs,
+		Envs: r.opt.RepoEnvs.Kv(),
 	}
 
 	c := cmd.NewCommand(restoreCtx, opts)
@@ -513,7 +452,7 @@ func (r *resticManager) GetSnapshots() (*SnapshotList, error) {
 				}
 
 				var msg = string(res)
-				logger.Debugf("[restic] snapshots %s message: %s", r.name, msg)
+				logger.Debugf("[restic] snapshots %s message: %s", r.opt.RepoName, msg)
 				if strings.Contains(msg, "Fatal: ") {
 					switch {
 					case strings.Contains(msg, ERROR_MESSAGE_SNAPSHOT_NOT_FOUND.Error()):
@@ -554,14 +493,14 @@ func (r *resticManager) GetSnapshots() (*SnapshotList, error) {
 	return summary, nil
 }
 
-func (r *resticManager) Restore(snapshotId string, uploadPath string, target string) (*RestoreSummaryOutput, error) {
+func (r *Restic) Restore(snapshotId string, uploadPath string, target string) (*RestoreSummaryOutput, error) {
 	var restoreCtx, cancel = context.WithCancel(r.ctx)
 	defer cancel()
 	opts := cmd.CommandOptions{
-		Path: r.bin,
+		Path: r.dir,
 		Args: []string{
 			"restore",
-			r.opt.downloadRate(),
+			r.opt.SetLimitDownloadRate(),
 			"-t",
 			target,
 			"-v=3",
@@ -569,7 +508,7 @@ func (r *resticManager) Restore(snapshotId string, uploadPath string, target str
 			PARAM_INSECURE_TLS,
 			fmt.Sprintf("%s:%s", snapshotId, uploadPath),
 		},
-		Envs: r.envs,
+		Envs: r.opt.RepoEnvs.Kv(),
 	}
 
 	c := cmd.NewCommand(restoreCtx, opts)
@@ -594,7 +533,7 @@ func (r *resticManager) Restore(snapshotId string, uploadPath string, target str
 				status := restoreMessagePool.Get()
 				if err := json.Unmarshal(res, status); err != nil {
 					var msg = string(res)
-					logger.Debugf("[restic] restore %s error message: %s", r.name, msg)
+					logger.Debugf("[restic] restore %s error message: %s", r.opt.RepoName, msg)
 					restoreMessagePool.Put(status)
 
 					switch {
@@ -647,7 +586,7 @@ func (r *resticManager) Restore(snapshotId string, uploadPath string, target str
 					logger.Infof(PRINT_RESTORE_ITEM, rvu.Item, util.FormatBytes(rvu.Size))
 				case "summary":
 					if err := json.Unmarshal(res, &summary); err != nil {
-						logger.Debugf("[restic] restore %s error summary unmarshal message: %s", r.name, string(res))
+						logger.Debugf("[restic] restore %s error summary unmarshal message: %s", r.opt.RepoName, string(res))
 						restoreMessagePool.Put(status)
 						errorMsg = RESTIC_ERROR_MESSAGE(err.Error())
 						c.Cancel()
@@ -673,7 +612,7 @@ func (r *resticManager) Restore(snapshotId string, uploadPath string, target str
 	return summary, nil
 }
 
-func (r *resticManager) fileNameTidy(f []string, prefix string) []string {
+func (r *Restic) fileNameTidy(f []string, prefix string) []string {
 	if f == nil || len(f) == 0 {
 		return f
 	}
@@ -686,6 +625,77 @@ func (r *resticManager) fileNameTidy(f []string, prefix string) []string {
 	return res
 }
 
-func (r *resticManager) withTag(name string) []string {
+func (r *Restic) withTag(name string) []string {
 	return []string{"--tag", fmt.Sprintf("repo_name=%s", name)}
+}
+
+var messagePool *statusMessagePool
+
+type statusMessagePool struct {
+	pool sync.Pool
+}
+
+var restoreMessagePool *restoreStatusMessagePool
+
+type restoreStatusMessagePool struct {
+	pool sync.Pool
+}
+
+func init() {
+	messagePool = NewResticMessagePool()
+	restoreMessagePool = NewResticRestoreMessagePool()
+}
+
+func NewResticRestoreMessagePool() *restoreStatusMessagePool {
+	return &restoreStatusMessagePool{
+		pool: sync.Pool{
+			New: func() any {
+				obj := new(RestoreStatusUpdate)
+				return obj
+			},
+		},
+	}
+}
+
+func (r *restoreStatusMessagePool) Get() *RestoreStatusUpdate {
+	if obj := r.pool.Get(); obj != nil {
+		return obj.(*RestoreStatusUpdate)
+	}
+	var obj = new(RestoreStatusUpdate)
+	// count = count + 1
+
+	r.Put(obj)
+	return obj
+}
+
+func (r *restoreStatusMessagePool) Put(obj *RestoreStatusUpdate) {
+	r.pool.Put(obj)
+}
+
+func NewResticMessagePool() *statusMessagePool {
+	return &statusMessagePool{
+		pool: sync.Pool{
+			New: func() any {
+				obj := new(StatusUpdate)
+				return obj
+			},
+		},
+	}
+}
+
+// var count int
+
+func (r *statusMessagePool) Get() *StatusUpdate {
+	if obj := r.pool.Get(); obj != nil {
+		return obj.(*StatusUpdate)
+	}
+	var obj = new(StatusUpdate)
+	// count = count + 1
+
+	r.Put(obj)
+	return obj
+}
+
+func (r *statusMessagePool) Put(obj *StatusUpdate) {
+	r.pool.Put(obj)
 }

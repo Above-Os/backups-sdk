@@ -38,13 +38,14 @@ func (s *SnapshotsService) Snapshots() {
 	}
 
 	var service Location
-
 	if s.option.Space != nil {
 		service = &space.Space{
 			RepoName:       s.option.Space.RepoName,
 			OlaresDid:      s.option.Space.OlaresDid,
 			AccessToken:    s.option.Space.AccessToken,
 			ClusterId:      s.option.Space.ClusterId,
+			CloudName:      s.option.Space.CloudName,
+			RegionId:       s.option.Space.RegionId,
 			CloudApiMirror: s.option.Space.CloudApiMirror,
 			Password:       password,
 			StsToken:       &space.StsToken{},
@@ -56,6 +57,7 @@ func (s *SnapshotsService) Snapshots() {
 			AccessKey:       s.option.S3.AccessKey,
 			SecretAccessKey: s.option.S3.SecretAccessKey,
 			Password:        password,
+			BaseHandler:     &BaseHandler{},
 		}
 	} else if s.option.Cos != nil {
 		service = &cos.Cos{
@@ -64,12 +66,14 @@ func (s *SnapshotsService) Snapshots() {
 			AccessKey:       s.option.Cos.AccessKey,
 			SecretAccessKey: s.option.Cos.SecretAccessKey,
 			Password:        password,
+			BaseHandler:     &BaseHandler{},
 		}
 	} else if s.option.Filesystem != nil {
 		service = &filesystem.Filesystem{
-			RepoName: s.option.Filesystem.RepoName,
-			Endpoint: s.option.Filesystem.Endpoint,
-			Password: password,
+			RepoName:    s.option.Filesystem.RepoName,
+			Endpoint:    s.option.Filesystem.Endpoint,
+			Password:    password,
+			BaseHandler: &BaseHandler{},
 		}
 	} else {
 		logger.Fatalf("There is no suitable recovery method.")

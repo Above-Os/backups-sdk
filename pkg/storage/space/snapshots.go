@@ -12,14 +12,19 @@ import (
 func (s *Space) Snapshots() error {
 	var repoName = s.RepoName
 
-	if err := s.getStsToken(DefaultLocation, DefaultRegion); err != nil {
+	if err := s.getStsToken(s.CloudName, s.RegionId); err != nil {
 		return errors.WithStack(err)
 	}
 
-	envs := s.GetEnv(repoName)
-	logger.Debugf("space snapshots env vars: %s", util.Base64encode([]byte(envs.ToString())))
+	var envs = s.GetEnv(repoName)
+	var opts = &restic.ResticOptions{
+		RepoName:        s.RepoName,
+		RepoEnvs:        envs,
+		LimitUploadRate: s.LimitUploadRate,
+	}
+	logger.Debugf("space snapshots env vars: %s", util.Base64encode([]byte(envs.String())))
 
-	r, err := restic.NewRestic(context.Background(), repoName, envs, nil)
+	r, err := restic.NewRestic(context.Background(), opts)
 	if err != nil {
 		return err
 	}

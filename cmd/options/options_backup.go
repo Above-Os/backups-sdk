@@ -14,6 +14,8 @@ type SpaceBackupOption struct {
 	OlaresDid       string `json:"olares_did"`
 	AccessToken     string `json:"access_token"`
 	ClusterId       string `json:"cluster_id"`
+	CloudName       string `json:"cloud_name"`
+	RegionId        string `json:"region_id"`
 	CloudApiMirror  string `json:"cloud_api_mirror"`
 }
 
@@ -28,6 +30,8 @@ func (o *SpaceBackupOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.OlaresDid, "olares-did", "", "", "Olares DID")
 	cmd.Flags().StringVarP(&o.AccessToken, "access-token", "", "", "Space Access Token")
 	cmd.Flags().StringVarP(&o.ClusterId, "cluster-id", "", "", "Space Cluster ID")
+	cmd.Flags().StringVarP(&o.CloudName, "region", "", "", "Space Cloud Name")
+	cmd.Flags().StringVarP(&o.RegionId, "region", "", "", "Space Region Id")
 	cmd.Flags().StringVarP(&o.CloudApiMirror, "cloud-api-mirror", "", "", "Cloud API mirror")
 }
 

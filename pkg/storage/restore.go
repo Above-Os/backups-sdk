@@ -45,6 +45,8 @@ func (r *RestoreService) Restore() {
 			OlaresDid:      r.option.Space.OlaresDid,
 			AccessToken:    r.option.Space.AccessToken,
 			ClusterId:      r.option.Space.ClusterId,
+			CloudName:      r.option.Space.CloudName,
+			RegionId:       r.option.Space.RegionId,
 			CloudApiMirror: r.option.Space.CloudApiMirror,
 			Password:       password,
 			StsToken:       &space.StsToken{},
@@ -58,6 +60,7 @@ func (r *RestoreService) Restore() {
 			SecretAccessKey: r.option.S3.SecretAccessKey,
 			Path:            r.option.S3.Path,
 			Password:        password,
+			BaseHandler:     &BaseHandler{},
 		}
 	} else if r.option.Cos != nil {
 		service = &cos.Cos{
@@ -68,21 +71,23 @@ func (r *RestoreService) Restore() {
 			SecretAccessKey: r.option.Cos.SecretAccessKey,
 			Path:            r.option.Cos.Path,
 			Password:        password,
+			BaseHandler:     &BaseHandler{},
 		}
 
 	} else if r.option.Filesystem != nil {
 		service = &filesystem.Filesystem{
-			RepoName:   r.option.Filesystem.RepoName,
-			SnapshotId: r.option.Filesystem.SnapshotId,
-			Endpoint:   r.option.Filesystem.Endpoint,
-			Path:       r.option.Filesystem.Path,
-			Password:   password,
+			RepoName:    r.option.Filesystem.RepoName,
+			SnapshotId:  r.option.Filesystem.SnapshotId,
+			Endpoint:    r.option.Filesystem.Endpoint,
+			Path:        r.option.Filesystem.Path,
+			Password:    password,
+			BaseHandler: &BaseHandler{},
 		}
 	} else {
 		logger.Fatalf("There is no suitable recovery method.")
 	}
 
 	if err := service.Restore(); err != nil {
-		logger.Errorf("Restore from Space error: %v", err)
+		logger.Errorf("Restore error: %v", err)
 	}
 }

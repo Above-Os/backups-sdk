@@ -4,21 +4,25 @@ import (
 	"path"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
 	"bytetrade.io/web3os/backups-sdk/pkg/util"
 )
 
 type Filesystem struct {
-	RepoName   string
-	SnapshotId string
-	Endpoint   string
-	Password   string
-	Path       string
+	RepoName    string
+	SnapshotId  string
+	Endpoint    string
+	Password    string
+	Path        string
+	BaseHandler base.Interface
 }
 
-// Backup implements storage.Location.
+func (f *Filesystem) Regions() error {
+	return nil
+}
 
-func (f *Filesystem) GetEnv(repository string) *restic.ResticEnv {
-	var envs = &restic.ResticEnv{
+func (f *Filesystem) GetEnv(repository string) *restic.ResticEnvs {
+	var envs = &restic.ResticEnvs{
 		RESTIC_REPOSITORY: path.Join(f.Endpoint, f.RepoName),
 		RESTIC_PASSWORD:   f.Password,
 	}
