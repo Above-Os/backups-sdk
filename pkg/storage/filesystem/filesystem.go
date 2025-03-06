@@ -5,7 +5,7 @@ import (
 
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
-	"bytetrade.io/web3os/backups-sdk/pkg/util"
+	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 )
 
 type Filesystem struct {
@@ -15,6 +15,53 @@ type Filesystem struct {
 	Password    string
 	Path        string
 	BaseHandler base.Interface
+}
+
+func (f *Filesystem) Backup() (err error) {
+	repository, err := f.FormatRepository()
+	if err != nil {
+		return
+	}
+
+	var envs = f.GetEnv(repository)
+	var opts = &restic.ResticOptions{
+		RepoName: f.RepoName,
+		RepoEnvs: envs,
+	}
+
+	f.BaseHandler.SetOptions(opts)
+	return f.BaseHandler.Backup()
+}
+
+func (f *Filesystem) Restore() error {
+	repository, err := f.FormatRepository()
+	if err != nil {
+		return err
+	}
+	var envs = f.GetEnv(repository)
+	var opts = &restic.ResticOptions{
+		RepoName: f.RepoName,
+		RepoEnvs: envs,
+	}
+
+	f.BaseHandler.SetOptions(opts)
+	return f.BaseHandler.Restore()
+}
+
+func (f *Filesystem) Snapshots() error {
+	repository, err := f.FormatRepository()
+	if err != nil {
+		return err
+	}
+
+	var envs = f.GetEnv(repository)
+	var opts = &restic.ResticOptions{
+		RepoName: f.RepoName,
+		RepoEnvs: envs,
+	}
+
+	f.BaseHandler.SetOptions(opts)
+	return f.BaseHandler.Snapshots()
 }
 
 func (f *Filesystem) Regions() error {
@@ -38,8 +85,8 @@ func (f *Filesystem) FormatRepository() (repository string, err error) {
 
 func (f *Filesystem) setRepoDir() error {
 	var p = path.Join(f.Endpoint, f.RepoName)
-	if !util.IsExist(p) {
-		if err := util.CreateDir(p); err != nil {
+	if !utils.IsExist(p) {
+		if err := utils.CreateDir(p); err != nil {
 			return err
 		}
 		return nil

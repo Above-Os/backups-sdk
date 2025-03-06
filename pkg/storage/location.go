@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
+	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
-	"bytetrade.io/web3os/backups-sdk/pkg/util"
-	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
+	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 )
 
 type Location interface {
@@ -65,12 +65,12 @@ func (d *BaseHandler) Backup() (err error) {
 		logger.Infof("repo %s initialized\n\n%s", repoName, initResult)
 	}
 
-	backupSummary, err = r.Backup(path, "")
+	backupSummary, err = r.Backup(path, "", nil)
 	if err != nil {
 		return
 	}
 
-	logger.Info("Backup successful, result: ", util.ToJSON(backupSummary))
+	logger.Info("Backup successful, result: ", utils.ToJSON(backupSummary))
 
 	return
 }
@@ -78,7 +78,7 @@ func (d *BaseHandler) Backup() (err error) {
 func (h *BaseHandler) Restore() error {
 	var snapshotId = h.opts.SnapshotId
 	var path = h.opts.Path
-	logger.Debugf("restore env vars: %s", util.Base64encode([]byte(h.opts.RepoEnvs.String())))
+	logger.Debugf("restore env vars: %s", utils.Base64encode([]byte(h.opts.RepoEnvs.String())))
 
 	re, err := restic.NewRestic(context.Background(), h.opts)
 	if err != nil {
@@ -90,7 +90,7 @@ func (h *BaseHandler) Restore() error {
 	}
 
 	var uploadPath = snapshotSummary.Paths[0]
-	logger.Infof("restore spanshot %s detail: %s", snapshotId, util.ToJSON(snapshotSummary))
+	logger.Infof("restore spanshot %s detail: %s", snapshotId, utils.ToJSON(snapshotSummary))
 
 	var summary *restic.RestoreSummaryOutput
 	summary, err = re.Restore(snapshotId, uploadPath, path)
@@ -99,14 +99,14 @@ func (h *BaseHandler) Restore() error {
 	}
 
 	if summary != nil {
-		logger.Infof("Restore successful, data: %s", util.ToJSON(summary))
+		logger.Infof("Restore successful, data: %s", utils.ToJSON(summary))
 	}
 
 	return nil
 }
 
 func (h *BaseHandler) Snapshots() error {
-	logger.Debugf("snapshots env vars: %s", util.Base64encode([]byte(h.opts.RepoEnvs.String())))
+	logger.Debugf("snapshots env vars: %s", utils.Base64encode([]byte(h.opts.RepoEnvs.String())))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -115,7 +115,7 @@ func (h *BaseHandler) Snapshots() error {
 		return err
 	}
 
-	snapshots, err := r.GetSnapshots()
+	snapshots, err := r.GetSnapshots(nil)
 	if err != nil {
 		return err
 	}

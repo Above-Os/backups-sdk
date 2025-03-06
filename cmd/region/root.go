@@ -1,14 +1,14 @@
 package region
 
 import (
-	"bytetrade.io/web3os/backups-sdk/cmd/options"
+	"bytetrade.io/web3os/backups-sdk/pkg/options"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage"
 	"github.com/spf13/cobra"
 )
 
 func NewCmdRegions() *cobra.Command {
 	rootCmdRegions := &cobra.Command{
-		Use:               "regions",
+		Use:               "region",
 		Short:             "Olares Storage Support Regions",
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	}

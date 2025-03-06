@@ -1,13 +1,15 @@
 package storage
 
 import (
-	"bytetrade.io/web3os/backups-sdk/cmd/options"
+	"strings"
+
+	"bytetrade.io/web3os/backups-sdk/pkg/logger"
+	"bytetrade.io/web3os/backups-sdk/pkg/options"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/cos"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/filesystem"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/s3"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/space"
-	"bytetrade.io/web3os/backups-sdk/pkg/util"
-	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
+	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 )
 
 type SnapshotsOption struct {
@@ -32,7 +34,7 @@ func NewSnapshotsService(option *SnapshotsOption) *SnapshotsService {
 }
 
 func (s *SnapshotsService) Snapshots() {
-	password, err := util.InputPasswordWithConfirm(false)
+	password, err := utils.InputPasswordWithConfirm(false)
 	if err != nil {
 		panic(err)
 	}
@@ -44,8 +46,8 @@ func (s *SnapshotsService) Snapshots() {
 			OlaresDid:      s.option.Space.OlaresDid,
 			AccessToken:    s.option.Space.AccessToken,
 			ClusterId:      s.option.Space.ClusterId,
-			CloudName:      s.option.Space.CloudName,
-			RegionId:       s.option.Space.RegionId,
+			CloudName:      strings.ToLower(s.option.Space.CloudName),
+			RegionId:       strings.ToLower(s.option.Space.RegionId),
 			CloudApiMirror: s.option.Space.CloudApiMirror,
 			Password:       password,
 			StsToken:       &space.StsToken{},

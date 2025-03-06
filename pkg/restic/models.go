@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 type ResticEnvs struct {
@@ -38,7 +39,6 @@ func (r *ResticEnvs) Slice() []string {
 		field := v.Field(i)
 		tag := t.Field(i).Tag.Get("env")
 		if tag != "" && field.String() != "" {
-			// m[tag] = field.String()
 			m = append(m, fmt.Sprintf("%s=%s", tag, field.String()))
 		}
 	}
@@ -120,6 +120,24 @@ type Snapshot struct {
 	Summary        *SnapshotSummary `json:"summary"`
 	Id             string           `json:"id"`
 	ShortId        string           `json:"short_id"`
+}
+
+func (s *Snapshot) TagValue(filter string) string {
+	if s.Tags == nil {
+		return ""
+	}
+	var result string
+	for _, tag := range s.Tags {
+		var s = strings.Split(tag, "=")
+		if len(s) != 2 {
+			continue
+		}
+		if s[0] == filter {
+			result = s[1]
+			break
+		}
+	}
+	return result
 }
 
 type SnapshotSummary struct {

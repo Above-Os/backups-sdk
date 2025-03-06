@@ -1,4 +1,4 @@
-package cmd
+package utils
 
 import (
 	"bufio"
@@ -7,7 +7,7 @@ import (
 	"os"
 	"os/exec"
 
-	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
+	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"github.com/pkg/errors"
 )
 

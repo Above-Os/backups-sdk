@@ -1,13 +1,15 @@
 package storage
 
 import (
-	"bytetrade.io/web3os/backups-sdk/cmd/options"
+	"strings"
+
+	"bytetrade.io/web3os/backups-sdk/pkg/logger"
+	"bytetrade.io/web3os/backups-sdk/pkg/options"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/cos"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/filesystem"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/s3"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/space"
-	"bytetrade.io/web3os/backups-sdk/pkg/util"
-	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
+	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 )
 
 type BackupOption struct {
@@ -32,7 +34,7 @@ func NewBackupService(option *BackupOption) *BackupService {
 }
 
 func (b *BackupService) Backup() {
-	password, err := util.InputPasswordWithConfirm(true)
+	password, err := utils.InputPasswordWithConfirm(true)
 	if err != nil {
 		panic(err)
 	}
@@ -44,8 +46,8 @@ func (b *BackupService) Backup() {
 			OlaresDid:       b.option.Space.OlaresDid,
 			AccessToken:     b.option.Space.AccessToken,
 			ClusterId:       b.option.Space.ClusterId,
-			CloudName:       b.option.Space.CloudName,
-			RegionId:        b.option.Space.RegionId,
+			CloudName:       strings.ToLower(b.option.Space.CloudName),
+			RegionId:        strings.ToLower(b.option.Space.RegionId),
 			Path:            b.option.Space.Path,
 			CloudApiMirror:  b.option.Space.CloudApiMirror,
 			LimitUploadRate: b.option.Space.LimitUploadRate,

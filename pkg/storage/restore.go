@@ -1,13 +1,15 @@
 package storage
 
 import (
-	"bytetrade.io/web3os/backups-sdk/cmd/options"
+	"strings"
+
+	"bytetrade.io/web3os/backups-sdk/pkg/logger"
+	"bytetrade.io/web3os/backups-sdk/pkg/options"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/cos"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/filesystem"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/s3"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/space"
-	"bytetrade.io/web3os/backups-sdk/pkg/util"
-	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
+	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 )
 
 type RestoreOption struct {
@@ -30,7 +32,7 @@ func NewRestoreService(option *RestoreOption) *RestoreService {
 }
 
 func (r *RestoreService) Restore() {
-	password, err := util.InputPasswordWithConfirm(false)
+	password, err := utils.InputPasswordWithConfirm(false)
 	if err != nil {
 		panic(err)
 	}
@@ -45,8 +47,8 @@ func (r *RestoreService) Restore() {
 			OlaresDid:      r.option.Space.OlaresDid,
 			AccessToken:    r.option.Space.AccessToken,
 			ClusterId:      r.option.Space.ClusterId,
-			CloudName:      r.option.Space.CloudName,
-			RegionId:       r.option.Space.RegionId,
+			CloudName:      strings.ToLower(r.option.Space.CloudName),
+			RegionId:       strings.ToLower(r.option.Space.RegionId),
 			CloudApiMirror: r.option.Space.CloudApiMirror,
 			Password:       password,
 			StsToken:       &space.StsToken{},

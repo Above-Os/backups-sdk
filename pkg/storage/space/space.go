@@ -5,15 +5,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"bytetrade.io/web3os/backups-sdk/pkg/constants"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
-	"bytetrade.io/web3os/backups-sdk/pkg/util"
-	"bytetrade.io/web3os/backups-sdk/pkg/util/net"
+	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 	"github.com/emicklei/go-restful/v3"
 	"github.com/pkg/errors"
-)
-
-const (
-	SpaceDomain = "amazonaws.com"
 )
 
 type Space struct {
@@ -58,7 +54,7 @@ func (s *Space) Regions() error {
 	}
 	var data = fmt.Sprintf("userid=%s&token=%s", s.OlaresDid, s.AccessToken)
 
-	result, err := net.Post[CloudStorageRegionResponse](url, headers, data)
+	result, err := utils.Post[CloudStorageRegionResponse](url, headers, data)
 	if err != nil {
 		return err
 	}
@@ -70,8 +66,7 @@ func (s *Space) Regions() error {
 	return nil
 }
 
-func (s *Space) GetEnv(repoName string) *restic.ResticEnvs {
-	s.RepoName = repoName
+func (s *Space) GetEnv(repository string) *restic.ResticEnvs {
 	repo, _ := s.FormatRepository()
 
 	var envs = &restic.ResticEnvs{
@@ -87,28 +82,28 @@ func (s *Space) GetEnv(repoName string) *restic.ResticEnvs {
 
 func (s *Space) getCosRepository() (repository string, err error) {
 	var repoPrefix = filepath.Join(s.StsToken.Prefix, "restic", s.RepoName)
-	repository = fmt.Sprintf("s3:https://cos.%s.myqcloud.com/%s/%s%s", s.RegionId, s.StsToken.Bucket, repoPrefix, s.RepoName)
+	repository = fmt.Sprintf("s3:https://cos.%s.%s/%s/%s", s.RegionId, constants.StorageCosDoman, s.StsToken.Bucket, repoPrefix)
 	return
 }
 
 func (s *Space) getDefaultRepository() (repository string, err error) {
 	var repoPrefix = filepath.Join(s.StsToken.Prefix, "restic", s.RepoName)
-	var domain = fmt.Sprintf("s3.%s.%s", s.StsToken.Region, SpaceDomain)
+	var domain = fmt.Sprintf("s3.%s.%s", s.StsToken.Region, constants.StorageS3Domain)
 	var repo = filepath.Join(domain, s.StsToken.Bucket, repoPrefix)
 	repository = fmt.Sprintf("s3:%s", repo)
 	return
 }
 
 func (s *Space) FormatRepository() (repository string, err error) {
-	if s.CloudName == "TencentCloud" {
+	if s.CloudName == constants.CloudTencentName {
 		return s.getCosRepository()
 	} else {
 		return s.getDefaultRepository()
 	}
 }
 
-func (s *Space) getStsToken(repoLocation, repoRegion string) error {
-	if err := s.StsToken.GetStsToken(s.OlaresDid, s.AccessToken, repoLocation, repoRegion, s.ClusterId, s.getCloudApi()); err != nil {
+func (s *Space) getStsToken() error {
+	if err := s.StsToken.GetStsToken(s.OlaresDid, s.AccessToken, s.CloudName, s.RegionId, s.ClusterId, s.getCloudApi()); err != nil {
 		return errors.WithStack(fmt.Errorf("get sts token error: %v", err))
 	}
 	return nil
@@ -123,6 +118,6 @@ func (s *Space) refreshStsTokens() error {
 }
 
 func (s *Space) getCloudApi() string {
-	var serverDomain = util.DefaultValue(DefaultCloudApiUrl, s.CloudApiMirror)
+	var serverDomain = utils.DefaultValue(constants.DefaultCloudApiUrl, s.CloudApiMirror)
 	return strings.TrimRight(serverDomain, "/")
 }

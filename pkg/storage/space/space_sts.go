@@ -2,17 +2,16 @@ package space
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"time"
 
-	"bytetrade.io/web3os/backups-sdk/pkg/util"
-	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
-	"bytetrade.io/web3os/backups-sdk/pkg/util/net"
+	"bytetrade.io/web3os/backups-sdk/pkg/constants"
+	"bytetrade.io/web3os/backups-sdk/pkg/logger"
+	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 	"github.com/emicklei/go-restful/v3"
 	"github.com/pkg/errors"
 )
-
-var DefaultCloudApiUrl = "https://cloud-api.bttcdn.com"
 
 type CloudStorageAccountResponse struct {
 	Header
@@ -58,7 +57,7 @@ func (s *StsToken) RefreshStsToken(cloudApiMirror string) error {
 	var headers = s.getRequestSpaceStsHeaders()
 	var data = s.getRequestSpaceRefreshStsData()
 
-	result, err := net.Post[CloudStorageAccountResponse](url, headers, data)
+	result, err := utils.Post[CloudStorageAccountResponse](url, headers, data)
 	if err != nil {
 		return err
 	}
@@ -82,15 +81,17 @@ func (s *StsToken) RefreshStsToken(cloudApiMirror string) error {
 }
 
 func (s *StsToken) GetStsToken(olaresDid, accessToken,
-	spaceLocation, spaceRegion, clusterId,
+	cloudName, regionId, clusterId,
 	cloudApiMirror string) error {
 	logger.Info("get sts token")
 
+	// ! test
+
 	var url = s.getRequestSpaceStsUrl(cloudApiMirror)
 	var headers = s.getRequestSpaceStsHeaders()
-	var data = s.getRequestSpaceStsData(olaresDid, accessToken, spaceLocation, spaceRegion, clusterId)
+	var data = s.getRequestSpaceStsData(olaresDid, accessToken, cloudName, regionId, clusterId)
 
-	result, err := net.Post[CloudStorageAccountResponse](url, headers, data)
+	result, err := utils.Post[CloudStorageAccountResponse](url, headers, data)
 	if err != nil {
 		return err
 	}
@@ -114,13 +115,11 @@ func (s *StsToken) GetStsToken(olaresDid, accessToken,
 	s.SessionToken = queryResp.Data.Token
 	s.Expiration = queryResp.Data.Expiration
 
-	// test
-
 	return nil
 }
 
 func (s *StsToken) parseClusterId(clusterId string) string {
-	return util.Base64encode([]byte(clusterId))
+	return utils.Base64encode([]byte(clusterId))
 }
 
 func (s *StsToken) parseSpaceStsDuration() time.Duration {
@@ -133,7 +132,7 @@ func (s *StsToken) parseSpaceStsDuration() time.Duration {
 }
 
 func (s *StsToken) getRequestSpaceStsUrl(cloudApiMirror string) string {
-	return fmt.Sprintf("%s/v1/resource/stsToken/backup")
+	return fmt.Sprintf("%s%s", cloudApiMirror, constants.StsTokenUrl)
 }
 
 func (s *StsToken) getRequestSpaceStsHeaders() map[string]string {
@@ -150,12 +149,14 @@ func (s *StsToken) getRequestSpaceStsData(olaresDid, token, location, region, cl
 }
 
 func (s *StsToken) getRequestSpaceRefreshStsUrl(cloudApiMirror string) string {
-	return fmt.Sprintf("%s/v1/resource/stsToken/backup/refresh", cloudApiMirror)
+	return fmt.Sprintf("%s%s", cloudApiMirror, constants.StsTokenRefreshUrl)
 }
 
 func (s *StsToken) getRequestSpaceRefreshStsData() string {
+	var sk = url.QueryEscape(s.SecretKey)
+	var st = url.QueryEscape(s.SessionToken)
 	var data = fmt.Sprintf("ak=%s&sk=%s&st=%s&durationSeconds=%s",
-		s.AccessKey, s.SecretKey, s.SessionToken, fmt.Sprintf("%.0f", s.parseSpaceStsDuration().Seconds()))
+		s.AccessKey, sk, st, fmt.Sprintf("%.0f", s.parseSpaceStsDuration().Seconds()))
 
 	return data
 }

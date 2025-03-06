@@ -30,8 +30,8 @@ func (o *SpaceRestoreOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.OlaresDid, "olares-did", "", "", "Olares DID")
 	cmd.Flags().StringVarP(&o.AccessToken, "access-token", "", "", "Space Access Token")
 	cmd.Flags().StringVarP(&o.ClusterId, "cluster-id", "", "", "Olares Cluster ID")
-	cmd.Flags().StringVarP(&o.CloudName, "region", "", "", "Space Cloud Name")
-	cmd.Flags().StringVarP(&o.RegionId, "region", "", "", "Space Region Id")
+	cmd.Flags().StringVarP(&o.CloudName, "cloud-name", "", "", "Space Cloud Name")
+	cmd.Flags().StringVarP(&o.RegionId, "region-id", "", "", "Space Region Id")
 	cmd.Flags().StringVarP(&o.CloudApiMirror, "cloud-api-mirror", "", "", "Cloud API mirror")
 }
 

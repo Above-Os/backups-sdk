@@ -5,12 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"bytetrade.io/web3os/backups-sdk/pkg/constants"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
-)
-
-const (
-	TencentDomain = "myqcloud.com"
 )
 
 type Cos struct {
@@ -20,9 +17,63 @@ type Cos struct {
 	AccessKey       string
 	SecretAccessKey string
 	Password        string
+	CloudName       string
+	RegionId        string
 	LimitUploadRate string
 	Path            string
 	BaseHandler     base.Interface
+}
+
+func (c *Cos) Backup() (err error) {
+	repository, err := c.FormatRepository()
+	if err != nil {
+		return err
+	}
+
+	var envs = c.GetEnv(repository)
+	var opts = &restic.ResticOptions{
+		RepoName:        c.RepoName,
+		CloudName:       c.CloudName,
+		RegionId:        c.RegionId,
+		RepoEnvs:        envs,
+		LimitUploadRate: c.LimitUploadRate,
+	}
+
+	c.BaseHandler.SetOptions(opts)
+	return c.BaseHandler.Backup()
+}
+
+func (c *Cos) Restore() error {
+	repository, err := c.FormatRepository()
+	if err != nil {
+		return err
+	}
+	var envs = c.GetEnv(repository)
+	var opts = &restic.ResticOptions{
+		RepoName:        c.RepoName,
+		RepoEnvs:        envs,
+		LimitUploadRate: c.LimitUploadRate,
+	}
+
+	c.BaseHandler.SetOptions(opts)
+	return c.BaseHandler.Restore()
+}
+
+func (c *Cos) Snapshots() error {
+	repository, err := c.FormatRepository()
+	if err != nil {
+		return err
+	}
+
+	var envs = c.GetEnv(repository)
+	var opts = &restic.ResticOptions{
+		RepoName:        c.RepoName,
+		RepoEnvs:        envs,
+		LimitUploadRate: c.LimitUploadRate,
+	}
+
+	c.BaseHandler.SetOptions(opts)
+	return c.BaseHandler.Snapshots()
 }
 
 func (c *Cos) Regions() error {
@@ -45,6 +96,7 @@ func (c *Cos) FormatRepository() (repository string, err error) {
 		return
 	}
 
+	var domainName = constants.StorageCosDoman
 	var endpoint = strings.TrimPrefix(c.Endpoint, "https://")
 	endpoint = strings.TrimRight(endpoint, "/")
 	if strings.EqualFold(endpoint, "") {
@@ -70,13 +122,16 @@ func (c *Cos) FormatRepository() (repository string, err error) {
 		err = fmt.Errorf("cos endpoint %v is invalid", repoBaseSplit)
 		return
 	}
-	if repoBaseSplit[0] != "cos" || repoBaseSplit[2] != TencentDomain {
-		err = fmt.Errorf("cos endpoint %v is not myqcloud.com", repoBaseSplit)
+	if repoBaseSplit[0] != "cos" || repoBaseSplit[2] != domainName {
+		err = fmt.Errorf("cos endpoint %v is not %s", repoBaseSplit, domainName)
 		return
 	}
 	var repoRegion = repoBaseSplit[1]
 
-	repository = fmt.Sprintf("s3:https://cos.%s.%s/%s/%s%s", repoRegion, TencentDomain, repoBucket, repoPrefix, c.RepoName)
+	repository = fmt.Sprintf("s3:https://cos.%s.%s/%s/%s%s", repoRegion, domainName, repoBucket, repoPrefix, c.RepoName)
+
+	c.CloudName = constants.CloudTencentName
+	c.RegionId = repoRegion
 
 	return
 }

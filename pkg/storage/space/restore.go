@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
-	"bytetrade.io/web3os/backups-sdk/pkg/util"
-	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
+	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 	"github.com/pkg/errors"
 )
 
@@ -37,7 +37,7 @@ func (s *Space) Restore() error {
 	}
 
 	if summary != nil {
-		logger.Infof("restore space successful, data: %s", util.ToJSON(summary))
+		logger.Infof("restore space successful, data: %s", utils.ToJSON(summary))
 	}
 
 	return nil
@@ -47,7 +47,7 @@ func (s *Space) runRestore(ctx context.Context, exitCh chan<- *StorageResponse) 
 	var repoName = s.RepoName
 
 	// get space sts token
-	if err := s.getStsToken(s.CloudName, s.RegionId); err != nil {
+	if err := s.getStsToken(); err != nil {
 		exitCh <- &StorageResponse{Error: err}
 		return
 	}
@@ -61,7 +61,7 @@ func (s *Space) runRestore(ctx context.Context, exitCh chan<- *StorageResponse) 
 			LimitUploadRate: s.LimitUploadRate,
 		}
 
-		logger.Debugf("space restore env vars: %s", util.Base64encode([]byte(envs.String())))
+		logger.Debugf("space restore env vars: %s", utils.Base64encode([]byte(envs.String())))
 
 		r, err := restic.NewRestic(ctx, opts)
 		if err != nil {
@@ -75,7 +75,7 @@ func (s *Space) runRestore(ctx context.Context, exitCh chan<- *StorageResponse) 
 			return
 		}
 		var uploadPath = snapshotSummary.Paths[0]
-		logger.Infof("space restore spanshot %s detail: %s", s.SnapshotId, util.ToJSON(snapshotSummary))
+		logger.Infof("space restore spanshot %s detail: %s", s.SnapshotId, utils.ToJSON(snapshotSummary))
 
 		summary, err = r.Restore(s.SnapshotId, uploadPath, s.Path)
 		if err != nil {

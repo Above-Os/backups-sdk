@@ -1,4 +1,4 @@
-package net
+package utils
 
 import (
 	"crypto/tls"

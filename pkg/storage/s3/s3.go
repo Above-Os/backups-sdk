@@ -5,12 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"bytetrade.io/web3os/backups-sdk/pkg/constants"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
-)
-
-const (
-	S3Domain = "amazonaws.com"
 )
 
 type S3 struct {
@@ -23,6 +20,55 @@ type S3 struct {
 	LimitUploadRate string
 	Path            string
 	BaseHandler     base.Interface
+}
+
+func (s *S3) Backup() (err error) {
+	repository, err := s.FormatRepository()
+	if err != nil {
+		return
+	}
+
+	var envs = s.GetEnv(repository)
+	var opts = &restic.ResticOptions{
+		RepoName:        s.RepoName,
+		Path:            s.Path,
+		LimitUploadRate: s.LimitUploadRate,
+		RepoEnvs:        envs,
+	}
+
+	s.BaseHandler.SetOptions(opts)
+	return s.BaseHandler.Backup()
+}
+
+func (s *S3) Restore() error {
+	repository, err := s.FormatRepository()
+	if err != nil {
+		return err
+	}
+	var envs = s.GetEnv(repository)
+	var opts = &restic.ResticOptions{
+		RepoName: s.RepoName,
+		RepoEnvs: envs,
+	}
+
+	s.BaseHandler.SetOptions(opts)
+	return s.BaseHandler.Restore()
+}
+
+func (s *S3) Snapshots() error {
+	repository, err := s.FormatRepository()
+	if err != nil {
+		return err
+	}
+
+	var envs = s.GetEnv(repository)
+	var opts = &restic.ResticOptions{
+		RepoName: s.RepoName,
+		RepoEnvs: envs,
+	}
+
+	s.BaseHandler.SetOptions(opts)
+	return s.BaseHandler.Snapshots()
 }
 
 func (s *S3) Regions() error {
@@ -45,6 +91,7 @@ func (s *S3) FormatRepository() (repository string, err error) {
 		return
 	}
 
+	var domainName = constants.StorageS3Domain
 	var endpoint = strings.TrimPrefix(s.Endpoint, "https://")
 	endpoint = strings.TrimRight(endpoint, "/")
 	if strings.EqualFold(endpoint, "") {
@@ -67,14 +114,14 @@ func (s *S3) FormatRepository() (repository string, err error) {
 		err = fmt.Errorf("s3 endpoint %v is invalid", repoBaseSplit)
 		return
 	}
-	if repoBaseSplit[2] != S3Domain {
-		err = fmt.Errorf("s3 endpoint %s is not %s", repoBaseSplit[2], S3Domain)
+	if repoBaseSplit[2] != domainName {
+		err = fmt.Errorf("s3 endpoint %s is not %s", repoBaseSplit[2], domainName)
 		return
 	}
 	var bucket = repoBaseSplit[0]
 	var region = repoBaseSplit[1]
 
-	repository = fmt.Sprintf("s3:s3.%s.%s/%s/%s%s", region, S3Domain, bucket, repoPrefix, s.RepoName)
+	repository = fmt.Sprintf("s3:s3.%s.%s/%s/%s%s", region, domainName, bucket, repoPrefix, s.RepoName)
 
 	return
 }

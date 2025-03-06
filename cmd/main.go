@@ -9,19 +9,17 @@ import (
 	"bytetrade.io/web3os/backups-sdk/cmd/region"
 	"bytetrade.io/web3os/backups-sdk/cmd/restore"
 	"bytetrade.io/web3os/backups-sdk/cmd/snapshots"
-	"bytetrade.io/web3os/backups-sdk/pkg/util"
-	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
+	"bytetrade.io/web3os/backups-sdk/pkg/constants"
+	"bytetrade.io/web3os/backups-sdk/pkg/logger"
+	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
-const (
-	defaultBaseDir = ".olares"
-)
-
 func main() {
-	var homeDir = util.GetHomeDir()
-	var jsonLogDir = path.Join(homeDir, defaultBaseDir, "logs")
-	logger.InitLog(jsonLogDir, true)
+	var homeDir = utils.GetHomeDir()
+	var jsonLogDir = path.Join(homeDir, constants.DefaultBaseDir, constants.DefaultLogsDir)
+
+	logger.InitLogger(jsonLogDir, true)
 
 	cmds := &cobra.Command{
 		CompletionOptions: cobra.CompletionOptions{

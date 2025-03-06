@@ -14,7 +14,7 @@ var logger *zap.SugaredLogger
 
 var FatalMessagePrefix = "[FATAL] "
 
-func InitLog(jsonLogDir string, consoleLogTruncate bool) {
+func InitLogger(jsonLogDir string, consoleLogTruncate bool) {
 	found, err := isDirExist(jsonLogDir)
 	if err != nil {
 		fmt.Println("log dir found error", err)
@@ -109,13 +109,6 @@ func getLevel(level string) (l zapcore.Level) {
 	return
 }
 
-func Sync() error {
-	if logger == nil {
-		return nil
-	}
-	return logger.Sync()
-}
-
 func Debug(args ...any) {
 	logger.Debug(args...)
 }
@@ -205,8 +198,4 @@ func Fatalf(format string, args ...any) {
 
 func Fatalw(msg string, args ...any) {
 	logger.Fatalw(msg, args...)
-}
-
-func GetLogger() *zap.SugaredLogger {
-	return logger
 }

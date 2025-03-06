@@ -1,7 +1,7 @@
 package restore
 
 import (
-	"bytetrade.io/web3os/backups-sdk/cmd/options"
+	"bytetrade.io/web3os/backups-sdk/pkg/options"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage"
 	"github.com/spf13/cobra"
 )
