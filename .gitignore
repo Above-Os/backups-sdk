@@ -26,4 +26,7 @@ go.work.sum
 
 *test
 
+.idea/
+main
 token/
+space_test.go

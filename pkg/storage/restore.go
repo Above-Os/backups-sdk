@@ -1,163 +1,95 @@
 package storage
 
 import (
-	"context"
-	"fmt"
-	"time"
+	"strings"
 
-	"bytetrade.io/web3os/backups-sdk/pkg/restic"
-	"bytetrade.io/web3os/backups-sdk/pkg/util"
-	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
-	"github.com/pkg/errors"
+	"bytetrade.io/web3os/backups-sdk/pkg/logger"
+	"bytetrade.io/web3os/backups-sdk/pkg/options"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/cos"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/filesystem"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/s3"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/space"
+	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 )
 
-type RestoreProvider interface {
-	Restore() error
-}
-
-type Restore struct {
-	option RestoreOption
-	client *StorageClient
-}
-
 type RestoreOption struct {
-	RepoName          string
-	SnapshotId        string
-	OlaresId          string
-	StorageLocation   string
-	Endpoint          string
-	AccessKey         string
-	SecretAccessKey   string
-	TargetPath        string
-	CloudApiMirror    string
-	LimitDownloadRate string
-	BaseDir           string
-	Version           string
+	Space      *options.SpaceRestoreOption
+	S3         *options.S3RestoreOption
+	Cos        *options.CosRestoreOption
+	Filesystem *options.FilesystemRestoreOption
 }
 
-func (d *Restore) Restore(opt RestoreOption) error {
-	ctx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
-	d.option = opt
-	var storageClient = &StorageClient{
-		RepoName:          d.option.RepoName,
-		SnapshotId:        d.option.SnapshotId,
-		OlaresId:          d.option.OlaresId,
-		StorageLocation:   d.option.StorageLocation,
-		Endpoint:          d.option.Endpoint,
-		AccessKey:         d.option.AccessKey,
-		SecretAccessKey:   d.option.SecretAccessKey,
-		TargetPath:        d.option.TargetPath,
-		CloudApiMirror:    d.option.CloudApiMirror,
-		LimitDownloadRate: d.option.LimitDownloadRate,
-		BaseDir:           d.option.BaseDir,
-		Version:           d.option.Version,
+type RestoreService struct {
+	option *RestoreOption
+}
+
+func NewRestoreService(option *RestoreOption) *RestoreService {
+	var restoreService = &RestoreService{
+		option: option,
 	}
 
-	d.client = storageClient
+	return restoreService
+}
 
-	var (
-		err     error
-		exitCh  = make(chan *StorageResponse)
-		summary *restic.RestoreSummaryOutput
-	)
-
-	go d.run(ctx, exitCh)
-
-	select {
-	case e, ok := <-exitCh:
-		if ok && e.Error != nil {
-			err = e.Error
-		}
-		summary = e.RestoreSummary
-	case <-ctx.Done():
-		err = errors.Errorf("restore %q osdata timed out in 2 hour", d.option.RepoName)
-	}
-
+func (r *RestoreService) Restore() {
+	password, err := utils.InputPasswordWithConfirm(false)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
-	if summary != nil {
-		logger.Infof("download successful, data: %s", util.ToJSON(summary))
-	}
+	var service Location
 
-	return nil
-}
-
-func (d *Restore) run(ctx context.Context, exitCh chan<- *StorageResponse) {
-	var olaresSpace = &OlaresSpace{
-		RepoName:           d.client.RepoName,
-		OlaresId:           d.client.OlaresId,
-		StorageLocation:    d.client.StorageLocation,
-		Endpoint:           d.client.Endpoint,
-		AccessKey:          d.client.AccessKey,
-		SecretAccessKey:    d.client.SecretAccessKey,
-		Path:               d.client.TargetPath,
-		CloudApiMirror:     d.client.CloudApiMirror,
-		BackupsOperate:     OperateRestore,
-		OlaresSpaceSession: new(OlaresSpaceSession),
-		BaseDir:            d.client.BaseDir,
-		Version:            d.client.Version,
-	}
-
-	if err := olaresSpace.GetAccount(); err != nil {
-		exitCh <- &StorageResponse{Error: fmt.Errorf("get account error: %v", err)}
-		return
-	}
-
-	if err := olaresSpace.EnterPassword(); err != nil {
-		exitCh <- &StorageResponse{Error: err}
-		return
-	}
-
-	var summary *restic.RestoreSummaryOutput
-
-	if err := olaresSpace.GetToken(); err != nil { // restore
-		exitCh <- &StorageResponse{Error: fmt.Errorf("get token error: %v", err)}
-		return
-	}
-
-	for {
-		olaresSpace.SetRepoUrl()
-		olaresSpace.SetEnv()
-
-		logger.Debugf("get token, data: %s", util.Base64encode([]byte(util.ToJSON(olaresSpace))))
-
-		r, err := restic.NewRestic(ctx, d.client.RepoName, d.client.OlaresId, olaresSpace.GetEnv(), &restic.Option{LimitDownloadRate: d.client.LimitDownloadRate})
-		if err != nil {
-			exitCh <- &StorageResponse{Error: err}
-			return
+	if r.option.Space != nil {
+		service = &space.Space{
+			RepoName:       r.option.Space.RepoName,
+			SnapshotId:     r.option.Space.SnapshotId,
+			Path:           r.option.Space.Path,
+			OlaresDid:      r.option.Space.OlaresDid,
+			AccessToken:    r.option.Space.AccessToken,
+			ClusterId:      r.option.Space.ClusterId,
+			CloudName:      strings.ToLower(r.option.Space.CloudName),
+			RegionId:       strings.ToLower(r.option.Space.RegionId),
+			CloudApiMirror: r.option.Space.CloudApiMirror,
+			Password:       password,
+			StsToken:       &space.StsToken{},
+		}
+	} else if r.option.S3 != nil {
+		service = &s3.S3{
+			RepoName:        r.option.S3.RepoName,
+			SnapshotId:      r.option.S3.SnapshotId,
+			Endpoint:        r.option.S3.Endpoint,
+			AccessKey:       r.option.S3.AccessKey,
+			SecretAccessKey: r.option.S3.SecretAccessKey,
+			Path:            r.option.S3.Path,
+			Password:        password,
+			BaseHandler:     &BaseHandler{},
+		}
+	} else if r.option.Cos != nil {
+		service = &cos.Cos{
+			RepoName:        r.option.Cos.RepoName,
+			SnapshotId:      r.option.Cos.SnapshotId,
+			Endpoint:        r.option.Cos.Endpoint,
+			AccessKey:       r.option.Cos.AccessKey,
+			SecretAccessKey: r.option.Cos.SecretAccessKey,
+			Path:            r.option.Cos.Path,
+			Password:        password,
+			BaseHandler:     &BaseHandler{},
 		}
 
-		snapshotSummary, err := r.GetSnapshot(d.client.SnapshotId)
-		if err != nil {
-			exitCh <- &StorageResponse{Error: err}
-			return
+	} else if r.option.Filesystem != nil {
+		service = &filesystem.Filesystem{
+			RepoName:    r.option.Filesystem.RepoName,
+			SnapshotId:  r.option.Filesystem.SnapshotId,
+			Endpoint:    r.option.Filesystem.Endpoint,
+			Path:        r.option.Filesystem.Path,
+			Password:    password,
+			BaseHandler: &BaseHandler{},
 		}
-		var uploadPath = snapshotSummary.Paths[0]
-
-		logger.Infof("snapshot %s detail: %s", d.client.SnapshotId, util.ToJSON(snapshotSummary))
-
-		summary, err = r.Restore(d.client.SnapshotId, uploadPath, d.client.TargetPath)
-		if err != nil {
-			switch err.Error() {
-			case restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error():
-				logger.Infof("olares space token expired, refresh")
-				if err := olaresSpace.GetToken(); err != nil { // restore
-					exitCh <- &StorageResponse{Error: fmt.Errorf("get token error: %v", err)}
-					return
-				}
-				r.NewContext()
-				time.Sleep(2 * time.Second)
-				continue
-			default:
-				exitCh <- &StorageResponse{Error: err}
-				return
-			}
-		}
-		break
+	} else {
+		logger.Fatalf("There is no suitable recovery method.")
 	}
 
-	exitCh <- &StorageResponse{RestoreSummary: summary}
+	if err := service.Restore(); err != nil {
+		logger.Errorf("Restore error: %v", err)
+	}
 }

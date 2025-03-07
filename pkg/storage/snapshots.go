@@ -1,142 +1,88 @@
 package storage
 
 import (
-	"context"
-	"fmt"
+	"strings"
 
-	"bytetrade.io/web3os/backups-sdk/pkg/restic"
-	"bytetrade.io/web3os/backups-sdk/pkg/util"
-	"bytetrade.io/web3os/backups-sdk/pkg/util/logger"
-	"github.com/pkg/errors"
+	"bytetrade.io/web3os/backups-sdk/pkg/logger"
+	"bytetrade.io/web3os/backups-sdk/pkg/options"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/cos"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/filesystem"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/s3"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/space"
+	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 )
 
-type SnapshotsProvider interface {
-	Snapshots() error
-}
-
-type Snapshots struct {
-	option SnapshotsOption
-	client *StorageClient
-}
-
 type SnapshotsOption struct {
-	RepoName        string `json:"repo_name"`
-	OlaresId        string `json:"olares_id"`
-	StorageLocation string `json:"storage_location"`
-	Endpoint        string `json:"endpoint"`
-	AccessKey       string `json:"access_key"`
-	SecretAccessKey string `json:"secret_access_key"`
-	CloudApiMirror  string `json:"cloud_api_mirror"`
-	BaseDir         string `json:"base_dir"`
-	Version         string `json:"version"`
+	Basedir    string
+	Space      *options.SpaceSnapshotsOption
+	S3         *options.S3SnapshotsOption
+	Cos        *options.CosSnapshotsOption
+	Filesystem *options.FilesystemSnapshotsOption
 }
 
-func (u *Snapshots) Snapshots(opt SnapshotsOption) error {
-	ctx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
-
-	u.option = opt
-
-	var storageClient = &StorageClient{
-		RepoName:        u.option.RepoName,
-		OlaresId:        u.option.OlaresId,
-		StorageLocation: u.option.StorageLocation,
-		Endpoint:        u.option.Endpoint,
-		AccessKey:       u.option.AccessKey,
-		SecretAccessKey: u.option.SecretAccessKey,
-		BaseDir:         u.option.BaseDir,
-		Version:         u.option.Version,
-	}
-	u.client = storageClient
-
-	var (
-		err     error
-		exitCh  = make(chan *StorageResponse)
-		summary []*restic.Snapshot
-	)
-
-	go u.run(ctx, exitCh)
-
-	select {
-	case e, ok := <-exitCh:
-		if ok && e.Error != nil {
-			err = e.Error
-		}
-		summary = e.SnapshotsSummary
-	case <-ctx.Done():
-		err = errors.Errorf("get snapshots timeout")
-	}
-
-	if err != nil {
-		return err
-	}
-
-	if summary != nil && len(summary) > 0 {
-		fmt.Printf("\n[RepoName]: %s\n", u.option.RepoName)
-		fmt.Printf("-------------------------------------------------------\n")
-		for _, snapshot := range summary {
-			fmt.Printf("  Snapshot ID: %s\n", snapshot.ShortId)
-			fmt.Printf("  Start Time: %s\n", snapshot.Summary.BackupStart)
-			fmt.Printf("  Path: %v\n", snapshot.Paths)
-			fmt.Printf("  Tags: %v\n", snapshot.Tags)
-			fmt.Printf("  Files: %d\n", snapshot.Summary.TotalFilesProcessed)
-			fmt.Printf("  Size: %s\n", util.FormatBytes(uint64(snapshot.Summary.TotalBytesProcessed)))
-			fmt.Printf("\n")
-		}
-		fmt.Printf("-------------------------------------------------------\n\n")
-	}
-
-	return nil
+type SnapshotsService struct {
+	option *SnapshotsOption
 }
 
-func (u *Snapshots) run(ctx context.Context, exitCh chan<- *StorageResponse) {
-	var olaresSpace = &OlaresSpace{
-		RepoName:           u.client.RepoName,
-		OlaresId:           u.client.OlaresId,
-		StorageLocation:    u.client.StorageLocation,
-		Endpoint:           u.client.Endpoint,
-		AccessKey:          u.client.AccessKey,
-		SecretAccessKey:    u.client.SecretAccessKey,
-		CloudApiMirror:     u.client.CloudApiMirror,
-		BackupsOperate:     OperateSnapshots,
-		OlaresSpaceSession: new(OlaresSpaceSession),
-		BaseDir:            u.client.BaseDir,
-		Version:            u.client.Version,
+func NewSnapshotsService(option *SnapshotsOption) *SnapshotsService {
+
+	var snapshotsService = &SnapshotsService{
+		option: option,
 	}
 
-	if err := olaresSpace.GetAccount(); err != nil {
-		exitCh <- &StorageResponse{Error: fmt.Errorf("get account error: %v", err)}
-		return
-	}
+	return snapshotsService
+}
 
-	if err := olaresSpace.EnterPassword(); err != nil {
-		exitCh <- &StorageResponse{Error: err}
-		return
-	}
-
-	if err := olaresSpace.GetToken(); err != nil { // snapshots
-		exitCh <- &StorageResponse{Error: fmt.Errorf("get token error: %v", err)}
-		return
-	}
-
-	// logger.Infof("get token, data: %s", util.ToJSON(olaresSpace))
-
-	olaresSpace.SetRepoUrl()
-	olaresSpace.SetEnv()
-
-	logger.Debugf("get token, data: %s", util.Base64encode([]byte(util.ToJSON(olaresSpace))))
-
-	r, err := restic.NewRestic(ctx, u.client.RepoName, u.client.OlaresId, olaresSpace.GetEnv(), &restic.Option{})
+func (s *SnapshotsService) Snapshots() {
+	password, err := utils.InputPasswordWithConfirm(false)
 	if err != nil {
-		exitCh <- &StorageResponse{Error: err}
+		panic(err)
+	}
+
+	var service Location
+	if s.option.Space != nil {
+		service = &space.Space{
+			RepoName:       s.option.Space.RepoName,
+			OlaresDid:      s.option.Space.OlaresDid,
+			AccessToken:    s.option.Space.AccessToken,
+			ClusterId:      s.option.Space.ClusterId,
+			CloudName:      strings.ToLower(s.option.Space.CloudName),
+			RegionId:       strings.ToLower(s.option.Space.RegionId),
+			CloudApiMirror: s.option.Space.CloudApiMirror,
+			Password:       password,
+			StsToken:       &space.StsToken{},
+		}
+	} else if s.option.S3 != nil {
+		service = &s3.S3{
+			RepoName:        s.option.S3.RepoName,
+			Endpoint:        s.option.S3.Endpoint,
+			AccessKey:       s.option.S3.AccessKey,
+			SecretAccessKey: s.option.S3.SecretAccessKey,
+			Password:        password,
+			BaseHandler:     &BaseHandler{},
+		}
+	} else if s.option.Cos != nil {
+		service = &cos.Cos{
+			RepoName:        s.option.Cos.RepoName,
+			Endpoint:        s.option.Cos.Endpoint,
+			AccessKey:       s.option.Cos.AccessKey,
+			SecretAccessKey: s.option.Cos.SecretAccessKey,
+			Password:        password,
+			BaseHandler:     &BaseHandler{},
+		}
+	} else if s.option.Filesystem != nil {
+		service = &filesystem.Filesystem{
+			RepoName:    s.option.Filesystem.RepoName,
+			Endpoint:    s.option.Filesystem.Endpoint,
+			Password:    password,
+			BaseHandler: &BaseHandler{},
+		}
+	} else {
+		logger.Fatalf("There is no suitable recovery method.")
 		return
 	}
 
-	snapshotsSummary, err := r.GetSnapshots()
-	if err != nil {
-		exitCh <- &StorageResponse{Error: err}
-		return
+	if err := service.Snapshots(); err != nil {
+		logger.Errorf("List Spanshots error: %v", err)
 	}
-
-	exitCh <- &StorageResponse{SnapshotsSummary: snapshotsSummary}
 }
