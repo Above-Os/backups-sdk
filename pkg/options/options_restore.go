@@ -8,15 +8,16 @@ import (
 var _ Option = &SpaceRestoreOption{}
 
 type SpaceRestoreOption struct {
-	RepoName       string
-	SnapshotId     string
-	Path           string
-	OlaresDid      string
-	AccessToken    string
-	ClusterId      string
-	CloudName      string
-	RegionId       string
-	CloudApiMirror string
+	RepoName          string
+	SnapshotId        string
+	Path              string
+	LimitDownloadRate string
+	OlaresDid         string
+	AccessToken       string
+	ClusterId         string
+	CloudName         string
+	RegionId          string
+	CloudApiMirror    string
 }
 
 func NewRestoreSpaceOption() *SpaceRestoreOption {
@@ -27,6 +28,7 @@ func (o *SpaceRestoreOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 	cmd.Flags().StringVarP(&o.SnapshotId, "snapshot-id", "", "", "Snapshot ID")
 	cmd.Flags().StringVarP(&o.Path, "path", "", "", "The directory to be restore")
+	cmd.Flags().StringVarP(&o.LimitDownloadRate, "limit-download-rate", "", "", "Limits downloads to a maximum rate in KiB/s. (default: unlimited)")
 	cmd.Flags().StringVarP(&o.OlaresDid, "olares-did", "", "", "Olares DID")
 	cmd.Flags().StringVarP(&o.AccessToken, "access-token", "", "", "Space Access Token")
 	cmd.Flags().StringVarP(&o.ClusterId, "cluster-id", "", "", "Olares Cluster ID")
@@ -39,12 +41,13 @@ func (o *SpaceRestoreOption) AddFlags(cmd *cobra.Command) {
 var _ Option = &S3RestoreOption{}
 
 type S3RestoreOption struct {
-	RepoName        string
-	SnapshotId      string
-	Endpoint        string
-	AccessKey       string
-	SecretAccessKey string
-	Path            string
+	RepoName          string
+	SnapshotId        string
+	Endpoint          string
+	AccessKey         string
+	SecretAccessKey   string
+	Path              string
+	LimitDownloadRate string
 }
 
 func NewRestoreS3Option() *S3RestoreOption {
@@ -58,18 +61,20 @@ func (o *S3RestoreOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.AccessKey, "access-key", "", "", "Access Key for S3")
 	cmd.Flags().StringVarP(&o.SecretAccessKey, "secret-access-key", "", "", "Secret Access Key for S3")
 	cmd.Flags().StringVarP(&o.Path, "path", "", "", "The directory to be restore")
+	cmd.Flags().StringVarP(&o.LimitDownloadRate, "limit-download-rate", "", "", "Limits downloads to a maximum rate in KiB/s. (default: unlimited)")
 }
 
 // ~ cos
 var _ Option = &CosRestoreOption{}
 
 type CosRestoreOption struct {
-	RepoName        string
-	SnapshotId      string
-	Endpoint        string
-	AccessKey       string
-	SecretAccessKey string
-	Path            string
+	RepoName          string
+	SnapshotId        string
+	Endpoint          string
+	AccessKey         string
+	SecretAccessKey   string
+	Path              string
+	LimitDownloadRate string
 }
 
 func NewRestoreCosOption() *CosRestoreOption {
@@ -83,6 +88,7 @@ func (o *CosRestoreOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.AccessKey, "access-key", "", "", "Access Key for Tencent COS")
 	cmd.Flags().StringVarP(&o.SecretAccessKey, "secret-access-key", "", "", "Secret Access Key for Tencent COS")
 	cmd.Flags().StringVarP(&o.Path, "path", "", "", "The directory to be restore")
+	cmd.Flags().StringVarP(&o.LimitDownloadRate, "limit-download-rate", "", "", "Limits downloads to a maximum rate in KiB/s. (default: unlimited)")
 }
 
 // ~ filesystem

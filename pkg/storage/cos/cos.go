@@ -11,17 +11,18 @@ import (
 )
 
 type Cos struct {
-	RepoName        string
-	SnapshotId      string
-	Endpoint        string
-	AccessKey       string
-	SecretAccessKey string
-	Password        string
-	CloudName       string
-	RegionId        string
-	LimitUploadRate string
-	Path            string
-	BaseHandler     base.Interface
+	RepoName          string
+	SnapshotId        string
+	Endpoint          string
+	AccessKey         string
+	SecretAccessKey   string
+	Password          string
+	CloudName         string
+	RegionId          string
+	LimitUploadRate   string
+	LimitDownloadRate string
+	Path              string
+	BaseHandler       base.Interface
 }
 
 func (c *Cos) Backup() (err error) {
@@ -50,9 +51,9 @@ func (c *Cos) Restore() error {
 	}
 	var envs = c.GetEnv(repository)
 	var opts = &restic.ResticOptions{
-		RepoName:        c.RepoName,
-		RepoEnvs:        envs,
-		LimitUploadRate: c.LimitUploadRate,
+		RepoName:          c.RepoName,
+		RepoEnvs:          envs,
+		LimitDownloadRate: c.LimitDownloadRate,
 	}
 
 	c.BaseHandler.SetOptions(opts)
@@ -96,7 +97,7 @@ func (c *Cos) FormatRepository() (repository string, err error) {
 		return
 	}
 
-	var domainName = constants.StorageCosDoman
+	var domainName = constants.StorageTencentDoman
 	var endpoint = strings.TrimPrefix(c.Endpoint, "https://")
 	endpoint = strings.TrimRight(endpoint, "/")
 	if strings.EqualFold(endpoint, "") {

@@ -13,18 +13,19 @@ import (
 )
 
 type Space struct {
-	RepoName        string
-	SnapshotId      string
-	OlaresDid       string
-	AccessToken     string
-	ClusterId       string
-	CloudName       string
-	RegionId        string
-	Password        string
-	Path            string
-	LimitUploadRate string
-	CloudApiMirror  string
-	StsToken        *StsToken
+	RepoName          string
+	SnapshotId        string
+	OlaresDid         string
+	AccessToken       string
+	ClusterId         string
+	CloudName         string
+	RegionId          string
+	Password          string
+	Path              string
+	LimitUploadRate   string
+	LimitDownloadRate string
+	CloudApiMirror    string
+	StsToken          *StsToken
 }
 
 type StorageResponse struct {
@@ -82,7 +83,7 @@ func (s *Space) GetEnv(repository string) *restic.ResticEnvs {
 
 func (s *Space) getCosRepository() (repository string, err error) {
 	var repoPrefix = filepath.Join(s.StsToken.Prefix, "restic", s.RepoName)
-	repository = fmt.Sprintf("s3:https://cos.%s.%s/%s/%s", s.RegionId, constants.StorageCosDoman, s.StsToken.Bucket, repoPrefix)
+	repository = fmt.Sprintf("s3:https://cos.%s.%s/%s/%s", s.RegionId, constants.StorageTencentDoman, s.StsToken.Bucket, repoPrefix)
 	return
 }
 
