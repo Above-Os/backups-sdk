@@ -18,7 +18,7 @@ func (s *Space) Backup() (err error) {
 	defer cancel()
 
 	if err = s.getStsToken(); err != nil {
-		return errors.WithStack(err)
+		return
 	}
 
 	var backupId = utils.MD5(fmt.Sprintf("%s_%s", s.RepoName, s.ClusterId))
@@ -112,6 +112,7 @@ func (s *Space) Backup() (err error) {
 				}
 				if err := r.Tag(backupSummary.SnapshotID, resetTags); err != nil {
 					logger.Errorf("set tag %s error :%v", shortId, err)
+					break
 				}
 			}
 		}
@@ -119,12 +120,11 @@ func (s *Space) Backup() (err error) {
 		logger.Infof("Backup successful, name: %s, type: %s, result: %s", s.RepoName, currentBackupType, utils.ToJSON(backupSummary))
 		if err := s.sendBackup(backupSummary, backupId, currentBackupType, opts.RepoEnvs.RESTIC_REPOSITORY); err != nil {
 			logger.Errorf("send backup to cloud error: %v", err)
-			return err
 		}
 		break
 	}
 
-	return nil
+	return
 }
 
 func (s *Space) sendBackup(backupResult *restic.SummaryOutput, backupId string, backupType string, backupUrl string) error {

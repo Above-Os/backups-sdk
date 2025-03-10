@@ -59,7 +59,7 @@ const (
 	PRINT_PROGRESS_MESSAGE = "[Upload] progress %s, files: %d/%d, size: %s/%s, current: %v"
 	PRINT_FINISH_MESSAGE   = "[Upload] finished, files: %d, size: %s, please waiting..."
 
-	PRINT_RESTORE_START_MESSAGE    = "[Download] start, files: %d, size: %s"
+	PRINT_RESTORE_START_MESSAGE    = "[Download] start, files: %d, size: %s, please waiting..."
 	PRINT_RESTORE_PROGRESS_MESSAGE = "[Download] progress %s, files: %d/%d, size: %s/%s"
 	PRINT_RESTORE_ITEM             = "[Download] restored file: %s, size: %s"
 	PRINT_RESTORE_FINISH_MESSAGE   = "[Download] snapshot %s finished, total files: %d, restored files: %d, total size: %s, restored size: %s, please waiting..."
@@ -576,6 +576,7 @@ func (r *Restic) Restore(snapshotId string, uploadPath string, target string) (*
 					switch {
 					case math.Abs(status.PercentDone-0.0) < tolerance:
 						if !started {
+							logger.Infof(PRINT_RESTORE_START_MESSAGE, status.TotalFiles, utils.FormatBytes(status.TotalBytes))
 							started = true
 						}
 					case math.Abs(status.PercentDone-1.0) < tolerance:

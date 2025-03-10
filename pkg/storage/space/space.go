@@ -13,18 +13,19 @@ import (
 )
 
 type Space struct {
-	RepoName        string
-	SnapshotId      string
-	OlaresDid       string
-	AccessToken     string
-	ClusterId       string
-	CloudName       string
-	RegionId        string
-	Password        string
-	Path            string
-	LimitUploadRate string
-	CloudApiMirror  string
-	StsToken        *StsToken
+	RepoName          string
+	SnapshotId        string
+	OlaresDid         string
+	AccessToken       string
+	ClusterId         string
+	CloudName         string
+	RegionId          string
+	Password          string
+	Path              string
+	LimitUploadRate   string
+	LimitDownloadRate string
+	CloudApiMirror    string
+	StsToken          *StsToken
 }
 
 type StorageResponse struct {

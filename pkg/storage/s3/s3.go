@@ -11,15 +11,16 @@ import (
 )
 
 type S3 struct {
-	RepoName        string
-	SnapshotId      string
-	Endpoint        string
-	AccessKey       string
-	SecretAccessKey string
-	Password        string
-	LimitUploadRate string
-	Path            string
-	BaseHandler     base.Interface
+	RepoName          string
+	SnapshotId        string
+	Endpoint          string
+	AccessKey         string
+	SecretAccessKey   string
+	Password          string
+	LimitUploadRate   string
+	LimitDownloadRate string
+	Path              string
+	BaseHandler       base.Interface
 }
 
 func (s *S3) Backup() (err error) {
@@ -47,8 +48,9 @@ func (s *S3) Restore() error {
 	}
 	var envs = s.GetEnv(repository)
 	var opts = &restic.ResticOptions{
-		RepoName: s.RepoName,
-		RepoEnvs: envs,
+		RepoName:          s.RepoName,
+		RepoEnvs:          envs,
+		LimitDownloadRate: s.LimitDownloadRate,
 	}
 
 	s.BaseHandler.SetOptions(opts)
