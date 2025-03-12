@@ -10,7 +10,7 @@ func NewCmdDownload() *cobra.Command {
 	o := options.NewDownloadOption()
 	cmds := &cobra.Command{
 		Use:   "download",
-		Short: "Olares download backup tools-kit",
+		Short: "Download the backup dependency tool Restic",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := file.Download(o.DownloadCdnUrl); err != nil {
 				panic(err)

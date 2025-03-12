@@ -9,7 +9,7 @@ import (
 func NewCmdSnapshots() *cobra.Command {
 	rootSnapshotsCmds := &cobra.Command{
 		Use:               "snapshots",
-		Short:             "Olares Backup Tool",
+		Short:             "Manage and view backup snapshots",
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	}
 

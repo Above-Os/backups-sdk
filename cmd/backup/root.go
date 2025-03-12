@@ -9,7 +9,7 @@ import (
 func NewCmdBackup() *cobra.Command {
 	rootBackupCmds := &cobra.Command{
 		Use:               "backup",
-		Short:             "Olares Backup Tool",
+		Short:             "Back up data to multiple storage targets: Space, S3, COS, and local",
 		CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 	}
 
@@ -25,7 +25,7 @@ func NewCmdSpace() *cobra.Command {
 	o := options.NewBackupSpaceOption()
 	cmd := &cobra.Command{
 		Use:   "space",
-		Short: "Backup files to Space",
+		Short: "Backup data to the Space",
 		Run: func(cmd *cobra.Command, args []string) {
 			var backupService = storage.NewBackupService(&storage.BackupOption{Space: o})
 			backupService.Backup()
@@ -39,7 +39,7 @@ func NewCmdS3() *cobra.Command {
 	o := options.NewBackupS3Option()
 	cmd := &cobra.Command{
 		Use:   "s3",
-		Short: "Backup files to S3",
+		Short: "Backup data to Amazon S3 or S3-compatible storage",
 		Run: func(cmd *cobra.Command, args []string) {
 			var backupService = storage.NewBackupService(&storage.BackupOption{S3: o})
 			backupService.Backup()
@@ -53,7 +53,7 @@ func NewCmdCos() *cobra.Command {
 	o := options.NewBackupCosOption()
 	cmd := &cobra.Command{
 		Use:   "cos",
-		Short: "Backup files to Tencent COS",
+		Short: "Backup data to Tencent Cloud Object Storage (COS)",
 		Run: func(cmd *cobra.Command, args []string) {
 			var backupService = storage.NewBackupService(&storage.BackupOption{Cos: o})
 			backupService.Backup()
@@ -67,7 +67,7 @@ func NewCmdFs() *cobra.Command {
 	o := options.NewBackupFilesystemOption()
 	cmd := &cobra.Command{
 		Use:   "fs",
-		Short: "Backup files to FileSystem",
+		Short: "Backup data to the local filesystem or disk",
 		Run: func(cmd *cobra.Command, args []string) {
 			var backupService = storage.NewBackupService(&storage.BackupOption{Filesystem: o})
 			backupService.Backup()
