@@ -23,7 +23,7 @@ type S3 struct {
 	BaseHandler       base.Interface
 }
 
-func (s *S3) Backup() (err error) {
+func (s *S3) Backup() (backupSummary *restic.SummaryOutput, repo string, err error) {
 	repository, err := s.FormatRepository()
 	if err != nil {
 		return

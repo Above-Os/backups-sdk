@@ -25,13 +25,13 @@ type Cos struct {
 	BaseHandler       base.Interface
 }
 
-func (c *Cos) Backup() (err error) {
+func (c *Cos) Backup() (backupSummary *restic.SummaryOutput, repo string, err error) {
 	repository, err := c.FormatRepository()
 	if err != nil {
-		return err
+		return
 	}
 
-	var envs = c.GetEnv(repository)
+	var envs = c.GetEnv(repository) // cos backup
 	var opts = &restic.ResticOptions{
 		RepoName:        c.RepoName,
 		CloudName:       c.CloudName,
@@ -49,7 +49,7 @@ func (c *Cos) Restore() error {
 	if err != nil {
 		return err
 	}
-	var envs = c.GetEnv(repository)
+	var envs = c.GetEnv(repository) // cos restore
 	var opts = &restic.ResticOptions{
 		RepoName:          c.RepoName,
 		RepoEnvs:          envs,
@@ -66,7 +66,7 @@ func (c *Cos) Snapshots() error {
 		return err
 	}
 
-	var envs = c.GetEnv(repository)
+	var envs = c.GetEnv(repository) // cos snapshot
 	var opts = &restic.ResticOptions{
 		RepoName:        c.RepoName,
 		RepoEnvs:        envs,

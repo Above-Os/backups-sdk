@@ -17,7 +17,7 @@ type Filesystem struct {
 	BaseHandler base.Interface
 }
 
-func (f *Filesystem) Backup() (err error) {
+func (f *Filesystem) Backup() (backupSummary *restic.SummaryOutput, repo string, err error) {
 	repository, err := f.FormatRepository()
 	if err != nil {
 		return

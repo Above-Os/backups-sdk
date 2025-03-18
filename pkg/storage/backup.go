@@ -5,15 +5,19 @@ import (
 
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/options"
+	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/cos"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/filesystem"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/s3"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/space"
 	"bytetrade.io/web3os/backups-sdk/pkg/utils"
+	"go.uber.org/zap"
 )
 
 type BackupOption struct {
 	Basedir    string
+	Password   string
+	Logger     *zap.SugaredLogger
 	Space      *options.SpaceBackupOption
 	S3         *options.S3BackupOption
 	Cos        *options.CosBackupOption
@@ -21,22 +25,28 @@ type BackupOption struct {
 }
 
 type BackupService struct {
-	baseDir string
-	option  *BackupOption
+	baseDir  string
+	password string
+	option   *BackupOption
 }
 
 func NewBackupService(option *BackupOption) *BackupService {
 	var backupService = &BackupService{
-		option: option,
+		password: option.Password,
+		option:   option,
 	}
 
 	return backupService
 }
 
-func (b *BackupService) Backup() {
-	password, err := utils.InputPasswordWithConfirm(true)
-	if err != nil {
-		panic(err)
+func (b *BackupService) Backup() (*restic.SummaryOutput, string, error) {
+	var password = b.password
+	var err error
+	if password == "" {
+		password, err = utils.InputPasswordWithConfirm(true)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	var service Location
@@ -88,7 +98,5 @@ func (b *BackupService) Backup() {
 		logger.Fatalf("There is no suitable recovery method.")
 	}
 
-	if err := service.Backup(); err != nil {
-		logger.Errorf("Backup error: %v", err)
-	}
+	return service.Backup()
 }

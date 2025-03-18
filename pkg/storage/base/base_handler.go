@@ -6,7 +6,7 @@ import (
 
 type Interface interface {
 	SetOptions(opts *restic.ResticOptions)
-	Backup() (err error)
+	Backup() (backupSummary *restic.SummaryOutput, repo string, err error)
 	Restore() (err error)
 	Snapshots() (err error)
 }

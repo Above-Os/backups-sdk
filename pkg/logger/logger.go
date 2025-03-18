@@ -74,6 +74,10 @@ func InitLogger(jsonLogDir string, consoleLogTruncate bool) {
 	logger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), zap.AddStacktrace(zapcore.FatalLevel)).Sugar()
 }
 
+func GetLogger() *zap.SugaredLogger {
+	return logger
+}
+
 func SetLogger(l *zap.SugaredLogger) {
 	logger = l
 }
