@@ -16,7 +16,7 @@ type Location interface {
 	Backup() (backupSummary *restic.SummaryOutput, repo string, err error)
 	Restore() error
 	Snapshots() error
-	Regions() error
+	Regions() ([]map[string]string, error)
 
 	GetEnv(repository string) *restic.ResticEnvs
 	FormatRepository() (repository string, err error)

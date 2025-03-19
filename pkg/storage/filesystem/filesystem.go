@@ -64,8 +64,8 @@ func (f *Filesystem) Snapshots() error {
 	return f.BaseHandler.Snapshots()
 }
 
-func (f *Filesystem) Regions() error {
-	return nil
+func (f *Filesystem) Regions() ([]map[string]string, error) {
+	return nil, nil
 }
 
 func (f *Filesystem) GetEnv(repository string) *restic.ResticEnvs {

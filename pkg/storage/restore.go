@@ -13,10 +13,10 @@ import (
 )
 
 type RestoreOption struct {
-	Space      *options.SpaceRestoreOption
-	S3         *options.S3RestoreOption
-	Cos        *options.CosRestoreOption
-	Filesystem *options.FilesystemRestoreOption
+	Space        *options.SpaceRestoreOption
+	Aws          *options.AwsRestoreOption
+	TencentCloud *options.TencentCloudRestoreOption
+	Filesystem   *options.FilesystemRestoreOption
 }
 
 type RestoreService struct {
@@ -54,27 +54,27 @@ func (r *RestoreService) Restore() {
 			LimitDownloadRate: r.option.Space.LimitDownloadRate,
 			StsToken:          &space.StsToken{},
 		}
-	} else if r.option.S3 != nil {
-		service = &s3.S3{
-			RepoName:          r.option.S3.RepoName,
-			SnapshotId:        r.option.S3.SnapshotId,
-			Endpoint:          r.option.S3.Endpoint,
-			AccessKey:         r.option.S3.AccessKey,
-			SecretAccessKey:   r.option.S3.SecretAccessKey,
-			Path:              r.option.S3.Path,
-			LimitDownloadRate: r.option.S3.LimitDownloadRate,
+	} else if r.option.Aws != nil {
+		service = &s3.Aws{
+			RepoName:          r.option.Aws.RepoName,
+			SnapshotId:        r.option.Aws.SnapshotId,
+			Endpoint:          r.option.Aws.Endpoint,
+			AccessKey:         r.option.Aws.AccessKey,
+			SecretAccessKey:   r.option.Aws.SecretAccessKey,
+			Path:              r.option.Aws.Path,
+			LimitDownloadRate: r.option.Aws.LimitDownloadRate,
 			Password:          password,
 			BaseHandler:       &BaseHandler{},
 		}
-	} else if r.option.Cos != nil {
-		service = &cos.Cos{
-			RepoName:          r.option.Cos.RepoName,
-			SnapshotId:        r.option.Cos.SnapshotId,
-			Endpoint:          r.option.Cos.Endpoint,
-			AccessKey:         r.option.Cos.AccessKey,
-			SecretAccessKey:   r.option.Cos.SecretAccessKey,
-			Path:              r.option.Cos.Path,
-			LimitDownloadRate: r.option.S3.LimitDownloadRate,
+	} else if r.option.TencentCloud != nil {
+		service = &cos.TencentCloud{
+			RepoName:          r.option.TencentCloud.RepoName,
+			SnapshotId:        r.option.TencentCloud.SnapshotId,
+			Endpoint:          r.option.TencentCloud.Endpoint,
+			AccessKey:         r.option.TencentCloud.AccessKey,
+			SecretAccessKey:   r.option.TencentCloud.SecretAccessKey,
+			Path:              r.option.TencentCloud.Path,
+			LimitDownloadRate: r.option.TencentCloud.LimitDownloadRate,
 			Password:          password,
 			BaseHandler:       &BaseHandler{},
 		}

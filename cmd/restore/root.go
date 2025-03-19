@@ -36,12 +36,12 @@ func NewCmdSpace() *cobra.Command {
 }
 
 func NewCmdS3() *cobra.Command {
-	o := options.NewRestoreS3Option()
+	o := options.NewRestoreAwsOption()
 	cmd := &cobra.Command{
 		Use:   "s3",
 		Short: "Restore data from Amazon S3 or S3-compatible storage",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = storage.NewRestoreService(&storage.RestoreOption{S3: o})
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Aws: o})
 			restoreService.Restore()
 		},
 	}
@@ -50,12 +50,12 @@ func NewCmdS3() *cobra.Command {
 }
 
 func NewCmdCos() *cobra.Command {
-	o := options.NewRestoreCosOption()
+	o := options.NewRestoreTencentCloudOption()
 	cmd := &cobra.Command{
 		Use:   "cos",
 		Short: "Restore data from Tencent Cloud Object Storage (COS)",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Cos: o})
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{TencentCloud: o})
 			restoreService.Restore()
 		},
 	}

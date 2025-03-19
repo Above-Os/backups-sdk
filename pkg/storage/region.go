@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/options"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/space"
 )
@@ -22,7 +21,7 @@ func NewRegionService(option *RegionOption) *RegionService {
 	return regionService
 }
 
-func (r *RegionService) Regions() {
+func (r *RegionService) Regions() ([]map[string]string, error) {
 	var service Location
 	if r.option != nil {
 		service = &space.Space{
@@ -31,7 +30,6 @@ func (r *RegionService) Regions() {
 			CloudApiMirror: r.option.Space.CloudApiMirror,
 		}
 	}
-	if err := service.Regions(); err != nil {
-		logger.Errorf("Get Regions error: %v", err)
-	}
+
+	return service.Regions()
 }

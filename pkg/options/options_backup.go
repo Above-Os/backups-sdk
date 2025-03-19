@@ -35,10 +35,10 @@ func (o *SpaceBackupOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.CloudApiMirror, "cloud-api-mirror", "", "", "Cloud API mirror")
 }
 
-// ~ s3
-var _ Option = &S3BackupOption{}
+// ~ aws
+var _ Option = &AwsBackupOption{}
 
-type S3BackupOption struct {
+type AwsBackupOption struct {
 	RepoName        string
 	Endpoint        string
 	AccessKey       string
@@ -47,11 +47,11 @@ type S3BackupOption struct {
 	LimitUploadRate string
 }
 
-func NewBackupS3Option() *S3BackupOption {
-	return &S3BackupOption{}
+func NewBackupAwsOption() *AwsBackupOption {
+	return &AwsBackupOption{}
 }
 
-func (o *S3BackupOption) AddFlags(cmd *cobra.Command) {
+func (o *AwsBackupOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 
 	cmd.Flags().StringVarP(&o.Endpoint, "endpoint", "", "", "Endpoint for S3, for example https://{bucket}.{region}.amazonaws.com/{prefix}")
@@ -63,9 +63,9 @@ func (o *S3BackupOption) AddFlags(cmd *cobra.Command) {
 }
 
 // ~ cos
-var _ Option = &CosBackupOption{}
+var _ Option = &TencentCloudBackupOption{}
 
-type CosBackupOption struct {
+type TencentCloudBackupOption struct {
 	RepoName        string
 	Endpoint        string
 	AccessKey       string
@@ -74,11 +74,11 @@ type CosBackupOption struct {
 	LimitUploadRate string
 }
 
-func NewBackupCosOption() *CosBackupOption {
-	return &CosBackupOption{}
+func NewBackupTencentCloudOption() *TencentCloudBackupOption {
+	return &TencentCloudBackupOption{}
 }
 
-func (o *CosBackupOption) AddFlags(cmd *cobra.Command) {
+func (o *TencentCloudBackupOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 
 	cmd.Flags().StringVarP(&o.Endpoint, "endpoint", "", "", "Endpoint for Tencent COS, for example https://cos.{region}.myqcloud.com/{bucket}/{prefix}")

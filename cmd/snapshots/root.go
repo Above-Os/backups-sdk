@@ -36,12 +36,12 @@ func NewCmdSpace() *cobra.Command {
 }
 
 func NewCmdS3() *cobra.Command {
-	o := options.NewSnapshotsS3Option()
+	o := options.NewSnapshotsAwsOption()
 	cmd := &cobra.Command{
 		Use:   "s3",
 		Short: "Backup snapshots from S3",
 		Run: func(cmd *cobra.Command, args []string) {
-			var snapshotsService = storage.NewSnapshotsService(&storage.SnapshotsOption{S3: o})
+			var snapshotsService = storage.NewSnapshotsService(&storage.SnapshotsOption{Aws: o})
 			snapshotsService.Snapshots()
 		},
 	}
@@ -50,12 +50,12 @@ func NewCmdS3() *cobra.Command {
 }
 
 func NewCmdCos() *cobra.Command {
-	o := options.NewSnapshotsCosOption()
+	o := options.NewSnapshotsTencentCloudOption()
 	cmd := &cobra.Command{
 		Use:   "cos",
 		Short: "Backup snapshots from Tencent COS",
 		Run: func(cmd *cobra.Command, args []string) {
-			var snapshotsService = storage.NewSnapshotsService(&storage.SnapshotsOption{Cos: o})
+			var snapshotsService = storage.NewSnapshotsService(&storage.SnapshotsOption{TencentCloud: o})
 			snapshotsService.Snapshots()
 		},
 	}

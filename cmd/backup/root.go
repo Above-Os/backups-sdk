@@ -36,12 +36,12 @@ func NewCmdSpace() *cobra.Command {
 }
 
 func NewCmdS3() *cobra.Command {
-	o := options.NewBackupS3Option()
+	o := options.NewBackupAwsOption()
 	cmd := &cobra.Command{
 		Use:   "s3",
 		Short: "Backup data to Amazon S3 or S3-compatible storage",
 		Run: func(cmd *cobra.Command, args []string) {
-			var backupService = storage.NewBackupService(&storage.BackupOption{S3: o})
+			var backupService = storage.NewBackupService(&storage.BackupOption{Aws: o})
 			backupService.Backup()
 		},
 	}
@@ -50,12 +50,12 @@ func NewCmdS3() *cobra.Command {
 }
 
 func NewCmdCos() *cobra.Command {
-	o := options.NewBackupCosOption()
+	o := options.NewBackupTencentCloudOption()
 	cmd := &cobra.Command{
 		Use:   "cos",
 		Short: "Backup data to Tencent Cloud Object Storage (COS)",
 		Run: func(cmd *cobra.Command, args []string) {
-			var backupService = storage.NewBackupService(&storage.BackupOption{Cos: o})
+			var backupService = storage.NewBackupService(&storage.BackupOption{TencentCloud: o})
 			backupService.Backup()
 		},
 	}

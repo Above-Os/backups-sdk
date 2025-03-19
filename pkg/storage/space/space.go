@@ -48,7 +48,7 @@ type Region struct {
 	CloudName  string `json:"cloudName"`
 }
 
-func (s *Space) Regions() error {
+func (s *Space) Regions() ([]map[string]string, error) {
 	var url = fmt.Sprintf("%s/v1/resource/backup/region", s.getCloudApi())
 	var headers = map[string]string{
 		restful.HEADER_ContentType: "application/x-www-form-urlencoded",
@@ -57,14 +57,23 @@ func (s *Space) Regions() error {
 
 	result, err := utils.Post[CloudStorageRegionResponse](url, headers, data)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if result.Data == nil {
-		return errors.WithStack(fmt.Errorf("get regions invalid, code: %d, msg: %s, params: %s", result.Code, result.Message, data))
+		return nil, errors.WithStack(fmt.Errorf("get regions invalid, code: %d, msg: %s, params: %s", result.Code, result.Message, data))
 	}
 
-	return nil
+	var regions []map[string]string
+
+	for _, region := range result.Data {
+		var r = make(map[string]string)
+		r["cloudName"] = region.CloudName
+		r["regionId"] = region.RegionId
+		regions = append(regions, r)
+	}
+
+	return regions, nil
 }
 
 func (s *Space) GetEnv(repository string) *restic.ResticEnvs {

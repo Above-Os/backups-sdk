@@ -31,21 +31,21 @@ func (o *SpaceSnapshotsOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.CloudApiMirror, "cloud-api-mirror", "", "", "Cloud API mirror")
 }
 
-// ~ s3
-var _ Option = &S3SnapshotsOption{}
+// ~ aws
+var _ Option = &AwsSnapshotsOption{}
 
-type S3SnapshotsOption struct {
+type AwsSnapshotsOption struct {
 	RepoName        string
 	Endpoint        string
 	AccessKey       string
 	SecretAccessKey string
 }
 
-func NewSnapshotsS3Option() *S3SnapshotsOption {
-	return &S3SnapshotsOption{}
+func NewSnapshotsAwsOption() *AwsSnapshotsOption {
+	return &AwsSnapshotsOption{}
 }
 
-func (o *S3SnapshotsOption) AddFlags(cmd *cobra.Command) {
+func (o *AwsSnapshotsOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 	cmd.Flags().StringVarP(&o.Endpoint, "endpoint", "", "", "Endpoint for S3, for example https://{bucket}.{region}.amazonaws.com/{prefix}")
 	cmd.Flags().StringVarP(&o.AccessKey, "access-key", "", "", "Access Key for S3")
@@ -53,20 +53,20 @@ func (o *S3SnapshotsOption) AddFlags(cmd *cobra.Command) {
 }
 
 // ~ cos
-var _ Option = &CosSnapshotsOption{}
+var _ Option = &TencentCloudSnapshotsOption{}
 
-type CosSnapshotsOption struct {
+type TencentCloudSnapshotsOption struct {
 	RepoName        string
 	Endpoint        string
 	AccessKey       string
 	SecretAccessKey string
 }
 
-func NewSnapshotsCosOption() *CosSnapshotsOption {
-	return &CosSnapshotsOption{}
+func NewSnapshotsTencentCloudOption() *TencentCloudSnapshotsOption {
+	return &TencentCloudSnapshotsOption{}
 }
 
-func (o *CosSnapshotsOption) AddFlags(cmd *cobra.Command) {
+func (o *TencentCloudSnapshotsOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 	cmd.Flags().StringVarP(&o.Endpoint, "endpoint", "", "", "Endpoint for Tencent COS, for example https://cos.{region}.myqcloud.com/{bucket}/{prefix}")
 	cmd.Flags().StringVarP(&o.AccessKey, "access-key", "", "", "Access Key for Tencent COS")

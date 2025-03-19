@@ -10,7 +10,7 @@ import (
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
 )
 
-type S3 struct {
+type Aws struct {
 	RepoName          string
 	SnapshotId        string
 	Endpoint          string
@@ -23,7 +23,7 @@ type S3 struct {
 	BaseHandler       base.Interface
 }
 
-func (s *S3) Backup() (backupSummary *restic.SummaryOutput, repo string, err error) {
+func (s *Aws) Backup() (backupSummary *restic.SummaryOutput, repo string, err error) {
 	repository, err := s.FormatRepository()
 	if err != nil {
 		return
@@ -41,7 +41,7 @@ func (s *S3) Backup() (backupSummary *restic.SummaryOutput, repo string, err err
 	return s.BaseHandler.Backup()
 }
 
-func (s *S3) Restore() error {
+func (s *Aws) Restore() error {
 	repository, err := s.FormatRepository()
 	if err != nil {
 		return err
@@ -57,7 +57,7 @@ func (s *S3) Restore() error {
 	return s.BaseHandler.Restore()
 }
 
-func (s *S3) Snapshots() error {
+func (s *Aws) Snapshots() error {
 	repository, err := s.FormatRepository()
 	if err != nil {
 		return err
@@ -73,11 +73,11 @@ func (s *S3) Snapshots() error {
 	return s.BaseHandler.Snapshots()
 }
 
-func (s *S3) Regions() error {
-	return nil
+func (s *Aws) Regions() ([]map[string]string, error) {
+	return nil, nil
 }
 
-func (s *S3) GetEnv(repository string) *restic.ResticEnvs {
+func (s *Aws) GetEnv(repository string) *restic.ResticEnvs {
 	var envs = &restic.ResticEnvs{
 		AWS_ACCESS_KEY_ID:     s.AccessKey,
 		AWS_SECRET_ACCESS_KEY: s.SecretAccessKey,
@@ -87,7 +87,7 @@ func (s *S3) GetEnv(repository string) *restic.ResticEnvs {
 	return envs
 }
 
-func (s *S3) FormatRepository() (repository string, err error) {
+func (s *Aws) FormatRepository() (repository string, err error) {
 	if s.Endpoint == "" {
 		err = errors.New("s3 endpoint is required")
 		return

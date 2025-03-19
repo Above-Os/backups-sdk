@@ -10,7 +10,7 @@ import (
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
 )
 
-type Cos struct {
+type TencentCloud struct {
 	RepoName          string
 	SnapshotId        string
 	Endpoint          string
@@ -25,7 +25,7 @@ type Cos struct {
 	BaseHandler       base.Interface
 }
 
-func (c *Cos) Backup() (backupSummary *restic.SummaryOutput, repo string, err error) {
+func (c *TencentCloud) Backup() (backupSummary *restic.SummaryOutput, repo string, err error) {
 	repository, err := c.FormatRepository()
 	if err != nil {
 		return
@@ -44,7 +44,7 @@ func (c *Cos) Backup() (backupSummary *restic.SummaryOutput, repo string, err er
 	return c.BaseHandler.Backup()
 }
 
-func (c *Cos) Restore() error {
+func (c *TencentCloud) Restore() error {
 	repository, err := c.FormatRepository()
 	if err != nil {
 		return err
@@ -60,7 +60,7 @@ func (c *Cos) Restore() error {
 	return c.BaseHandler.Restore()
 }
 
-func (c *Cos) Snapshots() error {
+func (c *TencentCloud) Snapshots() error {
 	repository, err := c.FormatRepository()
 	if err != nil {
 		return err
@@ -77,11 +77,11 @@ func (c *Cos) Snapshots() error {
 	return c.BaseHandler.Snapshots()
 }
 
-func (c *Cos) Regions() error {
-	return nil
+func (c *TencentCloud) Regions() ([]map[string]string, error) {
+	return nil, nil
 }
 
-func (c *Cos) GetEnv(repository string) *restic.ResticEnvs {
+func (c *TencentCloud) GetEnv(repository string) *restic.ResticEnvs {
 	var envs = &restic.ResticEnvs{
 		AWS_ACCESS_KEY_ID:     c.AccessKey,
 		AWS_SECRET_ACCESS_KEY: c.SecretAccessKey,
@@ -91,7 +91,7 @@ func (c *Cos) GetEnv(repository string) *restic.ResticEnvs {
 	return envs
 }
 
-func (c *Cos) FormatRepository() (repository string, err error) {
+func (c *TencentCloud) FormatRepository() (repository string, err error) {
 	if c.Endpoint == "" {
 		err = errors.New("cos endpoint is required")
 		return
