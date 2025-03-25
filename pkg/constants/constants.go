@@ -15,8 +15,9 @@ const (
 	StorageS3Domain     = "amazonaws.com"
 	StorageTencentDoman = "myqcloud.com"
 
-	CloudAWSName     = "aws"
-	CloudTencentName = "tencentcloud"
+	CloudAWSName        = "aws"
+	CloudTencentName    = "tencentcloud"
+	CloudFilesystemName = "filesystem"
 
 	FullyBackup       string = "fully"
 	IncrementalBackup string = "incremental"

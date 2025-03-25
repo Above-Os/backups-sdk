@@ -8,6 +8,7 @@ import (
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/cos"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/filesystem"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/model"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/s3"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/space"
 	"bytetrade.io/web3os/backups-sdk/pkg/utils"
@@ -39,7 +40,7 @@ func NewBackupService(option *BackupOption) *BackupService {
 	return backupService
 }
 
-func (b *BackupService) Backup() (*restic.SummaryOutput, string, error) {
+func (b *BackupService) Backup() (*restic.SummaryOutput, *model.StorageInfo, error) {
 	var password = b.password
 	var err error
 	if password == "" {

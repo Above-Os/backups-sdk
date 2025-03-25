@@ -6,15 +6,21 @@ import (
 
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/model"
 	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 	"github.com/pkg/errors"
 )
 
-func (s *Space) Backup() (backupSummary *restic.SummaryOutput, repo string, err error) {
+func (s *Space) Backup() (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
 	if err = s.getStsToken(); err != nil {
+		return
+	}
+
+	storageInfo, err = s.FormatRepository()
+	if err != nil {
 		return
 	}
 
@@ -24,7 +30,7 @@ func (s *Space) Backup() (backupSummary *restic.SummaryOutput, repo string, err 
 		var initResult string
 		var initialized bool
 
-		var envs = s.GetEnv(s.RepoName)
+		var envs = s.GetEnv(storageInfo.Url)
 		var opts = &restic.ResticOptions{
 			RepoName:        s.RepoName,
 			CloudName:       s.CloudName,
@@ -32,8 +38,6 @@ func (s *Space) Backup() (backupSummary *restic.SummaryOutput, repo string, err 
 			RepoEnvs:        envs,
 			LimitUploadRate: s.LimitUploadRate,
 		}
-
-		repo = opts.RepoEnvs.RESTIC_REPOSITORY
 
 		logger.Debugf("space backup env vars: %s", utils.Base64encode([]byte(envs.String())))
 
@@ -87,7 +91,7 @@ func (s *Space) Backup() (backupSummary *restic.SummaryOutput, repo string, err 
 				}
 				continue
 			default:
-				return nil, "", errors.WithStack(err)
+				return nil, nil, errors.WithStack(err)
 			}
 		}
 

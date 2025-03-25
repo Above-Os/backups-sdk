@@ -3,8 +3,10 @@ package filesystem
 import (
 	"path"
 
+	"bytetrade.io/web3os/backups-sdk/pkg/constants"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/model"
 	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 )
 
@@ -17,28 +19,29 @@ type Filesystem struct {
 	BaseHandler base.Interface
 }
 
-func (f *Filesystem) Backup() (backupSummary *restic.SummaryOutput, repo string, err error) {
-	repository, err := f.FormatRepository()
+func (f *Filesystem) Backup() (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
+	storageInfo, err = f.FormatRepository()
 	if err != nil {
 		return
 	}
 
-	var envs = f.GetEnv(repository)
+	var envs = f.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
 		RepoName: f.RepoName,
 		RepoEnvs: envs,
 	}
 
 	f.BaseHandler.SetOptions(opts)
-	return f.BaseHandler.Backup()
+	backupSummary, err = f.BaseHandler.Backup()
+	return backupSummary, storageInfo, err
 }
 
-func (f *Filesystem) Restore() error {
-	repository, err := f.FormatRepository()
+func (f *Filesystem) Restore() (restoreSummary *restic.RestoreSummaryOutput, err error) {
+	storageInfo, err := f.FormatRepository()
 	if err != nil {
-		return err
+		return
 	}
-	var envs = f.GetEnv(repository)
+	var envs = f.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
 		RepoName: f.RepoName,
 		RepoEnvs: envs,
@@ -49,12 +52,12 @@ func (f *Filesystem) Restore() error {
 }
 
 func (f *Filesystem) Snapshots() error {
-	repository, err := f.FormatRepository()
+	storageInfo, err := f.FormatRepository()
 	if err != nil {
 		return err
 	}
 
-	var envs = f.GetEnv(repository)
+	var envs = f.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
 		RepoName: f.RepoName,
 		RepoEnvs: envs,
@@ -76,11 +79,21 @@ func (f *Filesystem) GetEnv(repository string) *restic.ResticEnvs {
 	return envs
 }
 
-func (f *Filesystem) FormatRepository() (repository string, err error) {
+func (f *Filesystem) FormatRepository() (storageInfo *model.StorageInfo, err error) {
 	if err := f.setRepoDir(); err != nil {
-		return "", err
+		return nil, err
 	}
-	return f.Endpoint, nil
+
+	storageInfo = &model.StorageInfo{
+		Location:  "filesystem",
+		Url:       f.Endpoint,
+		CloudName: constants.CloudFilesystemName,
+		RegionId:  "",
+		Bucket:    "",
+		Prefix:    "",
+	}
+
+	return storageInfo, nil
 }
 
 func (f *Filesystem) setRepoDir() error {

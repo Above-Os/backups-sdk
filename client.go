@@ -33,3 +33,9 @@ func NewBackupService(option *storage.BackupOption) *storage.BackupService {
 
 	return storage.NewBackupService(option)
 }
+
+func NewRestoreService(option *storage.RestoreOption) *storage.RestoreService {
+	logger.SetLogger(option.Logger)
+
+	return storage.NewRestoreService(option)
+}

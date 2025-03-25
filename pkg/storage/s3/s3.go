@@ -8,6 +8,7 @@ import (
 	"bytetrade.io/web3os/backups-sdk/pkg/constants"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/model"
 )
 
 type Aws struct {
@@ -23,13 +24,13 @@ type Aws struct {
 	BaseHandler       base.Interface
 }
 
-func (s *Aws) Backup() (backupSummary *restic.SummaryOutput, repo string, err error) {
-	repository, err := s.FormatRepository()
+func (s *Aws) Backup() (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
+	storageInfo, err = s.FormatRepository()
 	if err != nil {
 		return
 	}
 
-	var envs = s.GetEnv(repository)
+	var envs = s.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
 		RepoName:        s.RepoName,
 		Path:            s.Path,
@@ -38,15 +39,17 @@ func (s *Aws) Backup() (backupSummary *restic.SummaryOutput, repo string, err er
 	}
 
 	s.BaseHandler.SetOptions(opts)
-	return s.BaseHandler.Backup()
+
+	backupSummary, err = s.BaseHandler.Backup()
+	return backupSummary, storageInfo, err
 }
 
-func (s *Aws) Restore() error {
-	repository, err := s.FormatRepository()
+func (s *Aws) Restore() (restoreSummary *restic.RestoreSummaryOutput, err error) {
+	storageInfo, err := s.FormatRepository()
 	if err != nil {
-		return err
+		return
 	}
-	var envs = s.GetEnv(repository)
+	var envs = s.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
 		RepoName:          s.RepoName,
 		RepoEnvs:          envs,
@@ -58,12 +61,12 @@ func (s *Aws) Restore() error {
 }
 
 func (s *Aws) Snapshots() error {
-	repository, err := s.FormatRepository()
+	storageInfo, err := s.FormatRepository()
 	if err != nil {
 		return err
 	}
 
-	var envs = s.GetEnv(repository)
+	var envs = s.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
 		RepoName: s.RepoName,
 		RepoEnvs: envs,
@@ -87,7 +90,7 @@ func (s *Aws) GetEnv(repository string) *restic.ResticEnvs {
 	return envs
 }
 
-func (s *Aws) FormatRepository() (repository string, err error) {
+func (s *Aws) FormatRepository() (storageInfo *model.StorageInfo, err error) {
 	if s.Endpoint == "" {
 		err = errors.New("s3 endpoint is required")
 		return
@@ -103,7 +106,7 @@ func (s *Aws) FormatRepository() (repository string, err error) {
 
 	var repoSplit = strings.SplitN(endpoint, "/", 2)
 	if repoSplit == nil || len(repoSplit) < 1 {
-		return "", fmt.Errorf("s3 endpoint %v is invalid", repoSplit)
+		return nil, fmt.Errorf("s3 endpoint %v is invalid", repoSplit)
 	}
 	var repoBase = repoSplit[0]
 	var repoPrefix = ""
@@ -123,7 +126,16 @@ func (s *Aws) FormatRepository() (repository string, err error) {
 	var bucket = repoBaseSplit[0]
 	var region = repoBaseSplit[1]
 
-	repository = fmt.Sprintf("s3:s3.%s.%s/%s/%s%s", region, domainName, bucket, repoPrefix, s.RepoName)
+	var repository = fmt.Sprintf("s3:s3.%s.%s/%s/%s%s", region, domainName, bucket, repoPrefix, s.RepoName)
+
+	storageInfo = &model.StorageInfo{
+		Location:  "awss3",
+		Url:       repository,
+		CloudName: constants.CloudAWSName,
+		RegionId:  region,
+		Bucket:    bucket,
+		Prefix:    repoPrefix,
+	}
 
 	return
 }

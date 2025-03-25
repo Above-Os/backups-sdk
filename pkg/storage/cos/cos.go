@@ -8,6 +8,7 @@ import (
 	"bytetrade.io/web3os/backups-sdk/pkg/constants"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/model"
 )
 
 type TencentCloud struct {
@@ -25,13 +26,13 @@ type TencentCloud struct {
 	BaseHandler       base.Interface
 }
 
-func (c *TencentCloud) Backup() (backupSummary *restic.SummaryOutput, repo string, err error) {
-	repository, err := c.FormatRepository()
+func (c *TencentCloud) Backup() (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
+	storageInfo, err = c.FormatRepository()
 	if err != nil {
 		return
 	}
 
-	var envs = c.GetEnv(repository) // cos backup
+	var envs = c.GetEnv(storageInfo.Url) // cos backup
 	var opts = &restic.ResticOptions{
 		RepoName:        c.RepoName,
 		CloudName:       c.CloudName,
@@ -41,15 +42,17 @@ func (c *TencentCloud) Backup() (backupSummary *restic.SummaryOutput, repo strin
 	}
 
 	c.BaseHandler.SetOptions(opts)
-	return c.BaseHandler.Backup()
+
+	backupSummary, err = c.BaseHandler.Backup()
+	return backupSummary, storageInfo, err
 }
 
-func (c *TencentCloud) Restore() error {
-	repository, err := c.FormatRepository()
+func (c *TencentCloud) Restore() (restoreSummary *restic.RestoreSummaryOutput, err error) {
+	storageInfo, err := c.FormatRepository()
 	if err != nil {
-		return err
+		return
 	}
-	var envs = c.GetEnv(repository) // cos restore
+	var envs = c.GetEnv(storageInfo.Url) // cos restore
 	var opts = &restic.ResticOptions{
 		RepoName:          c.RepoName,
 		RepoEnvs:          envs,
@@ -61,12 +64,12 @@ func (c *TencentCloud) Restore() error {
 }
 
 func (c *TencentCloud) Snapshots() error {
-	repository, err := c.FormatRepository()
+	storageInfo, err := c.FormatRepository()
 	if err != nil {
 		return err
 	}
 
-	var envs = c.GetEnv(repository) // cos snapshot
+	var envs = c.GetEnv(storageInfo.Url) // cos snapshot
 	var opts = &restic.ResticOptions{
 		RepoName:        c.RepoName,
 		RepoEnvs:        envs,
@@ -91,7 +94,7 @@ func (c *TencentCloud) GetEnv(repository string) *restic.ResticEnvs {
 	return envs
 }
 
-func (c *TencentCloud) FormatRepository() (repository string, err error) {
+func (c *TencentCloud) FormatRepository() (storageInfo *model.StorageInfo, err error) {
 	if c.Endpoint == "" {
 		err = errors.New("cos endpoint is required")
 		return
@@ -129,10 +132,19 @@ func (c *TencentCloud) FormatRepository() (repository string, err error) {
 	}
 	var repoRegion = repoBaseSplit[1]
 
-	repository = fmt.Sprintf("s3:https://cos.%s.%s/%s/%s%s", repoRegion, domainName, repoBucket, repoPrefix, c.RepoName)
+	var repository = fmt.Sprintf("s3:https://cos.%s.%s/%s/%s%s", repoRegion, domainName, repoBucket, repoPrefix, c.RepoName)
 
 	c.CloudName = constants.CloudTencentName
 	c.RegionId = repoRegion
+
+	storageInfo = &model.StorageInfo{
+		Location:  "tencentcloud",
+		Url:       repository,
+		CloudName: constants.CloudTencentName,
+		RegionId:  repoRegion,
+		Bucket:    repoBucket,
+		Prefix:    repoPrefix,
+	}
 
 	return
 }

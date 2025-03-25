@@ -8,18 +8,19 @@ import (
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/model"
 	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 	"github.com/pkg/errors"
 )
 
 type Location interface {
-	Backup() (backupSummary *restic.SummaryOutput, repo string, err error)
-	Restore() error
+	Backup() (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error)
+	Restore() (restoreSummary *restic.RestoreSummaryOutput, err error)
 	Snapshots() error
 	Regions() ([]map[string]string, error)
 
 	GetEnv(repository string) *restic.ResticEnvs
-	FormatRepository() (repository string, err error)
+	FormatRepository() (storageInfo *model.StorageInfo, err error)
 }
 
 var _ base.Interface = &BaseHandler{}
@@ -33,10 +34,9 @@ func (d *BaseHandler) SetOptions(opts *restic.ResticOptions) {
 	d.opts = opts
 }
 
-func (d *BaseHandler) Backup() (backupSummary *restic.SummaryOutput, repo string, err error) {
+func (d *BaseHandler) Backup() (backupSummary *restic.SummaryOutput, err error) {
 	var repoName = d.opts.RepoName
 	var path = d.opts.Path
-	repo = d.opts.RepoEnvs.RESTIC_REPOSITORY
 
 	r, err := restic.NewRestic(context.Background(), d.opts)
 	if err != nil {
@@ -115,34 +115,34 @@ func (d *BaseHandler) Backup() (backupSummary *restic.SummaryOutput, repo string
 	return
 }
 
-func (h *BaseHandler) Restore() error {
+func (h *BaseHandler) Restore() (restoreSummary *restic.RestoreSummaryOutput, err error) {
 	var snapshotId = h.opts.SnapshotId
 	var path = h.opts.Path
 	logger.Debugf("restore env vars: %s", utils.Base64encode([]byte(h.opts.RepoEnvs.String())))
 
-	re, err := restic.NewRestic(context.Background(), h.opts)
+	var re *restic.Restic
+	re, err = restic.NewRestic(context.Background(), h.opts)
 	if err != nil {
-		return err
+		return
 	}
-	snapshotSummary, err := re.GetSnapshot(snapshotId)
+	var snapshotSummary *restic.Snapshot
+	snapshotSummary, err = re.GetSnapshot(snapshotId)
 	if err != nil {
-		return err
+		return
 	}
 
 	var uploadPath = snapshotSummary.Paths[0]
 	logger.Infof("restore spanshot %s detail: %s", snapshotId, utils.ToJSON(snapshotSummary))
 
-	var summary *restic.RestoreSummaryOutput
-	summary, err = re.Restore(snapshotId, uploadPath, path)
+	restoreSummary, err = re.Restore(snapshotId, uploadPath, path)
 	if err != nil {
-		return err
+		err = fmt.Errorf("restore %s snapshot %s error: %v", h.opts.RepoName, h.opts.SnapshotId, err)
+		return
 	}
 
-	if summary != nil {
-		logger.Infof("Restore successful, data: %s", utils.ToJSON(summary))
-	}
+	logger.Infof("Restore successful, name: %s, result: %s", h.opts.RepoName, utils.ToJSON(restoreSummary))
 
-	return nil
+	return
 }
 
 func (h *BaseHandler) Snapshots() error {
