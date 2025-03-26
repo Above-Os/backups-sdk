@@ -9,8 +9,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Space) Snapshots() error {
-	if err := s.getStsToken(); err != nil {
+func (s *Space) Snapshots(ctx context.Context) error {
+	if err := s.getStsToken(ctx); err != nil {
 		return errors.WithStack(err)
 	}
 

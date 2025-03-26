@@ -1,9 +1,11 @@
 package space
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/constants"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
@@ -50,13 +52,16 @@ type Region struct {
 }
 
 func (s *Space) Regions() ([]map[string]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	var url = fmt.Sprintf("%s/v1/resource/backup/region", s.getCloudApi())
 	var headers = map[string]string{
 		restful.HEADER_ContentType: "application/x-www-form-urlencoded",
 	}
 	var data = fmt.Sprintf("userid=%s&token=%s", s.OlaresDid, s.AccessToken)
 
-	result, err := utils.Post[CloudStorageRegionResponse](url, headers, data)
+	result, err := utils.Post[CloudStorageRegionResponse](ctx, url, headers, data)
 	if err != nil {
 		return nil, err
 	}
@@ -131,15 +136,15 @@ func (s *Space) FormatRepository() (storageInfo *model.StorageInfo, err error) {
 	}
 }
 
-func (s *Space) getStsToken() error {
-	if err := s.StsToken.GetStsToken(s.OlaresDid, s.AccessToken, s.CloudName, s.RegionId, s.ClusterId, s.getCloudApi()); err != nil {
+func (s *Space) getStsToken(ctx context.Context) error {
+	if err := s.StsToken.GetStsToken(ctx, s.OlaresDid, s.AccessToken, s.CloudName, s.RegionId, s.ClusterId, s.getCloudApi()); err != nil {
 		return errors.WithStack(fmt.Errorf("get sts token error: %v", err))
 	}
 	return nil
 }
 
-func (s *Space) refreshStsTokens() error {
-	if err := s.StsToken.RefreshStsToken(s.getCloudApi()); err != nil {
+func (s *Space) refreshStsTokens(ctx context.Context) error {
+	if err := s.StsToken.RefreshStsToken(ctx, s.getCloudApi()); err != nil {
 		return errors.WithStack(fmt.Errorf("refresh sts token error: %v", err))
 	}
 

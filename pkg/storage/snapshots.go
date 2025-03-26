@@ -1,7 +1,9 @@
 package storage
 
 import (
+	"context"
 	"strings"
+	"time"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/options"
@@ -82,7 +84,10 @@ func (s *SnapshotsService) Snapshots() {
 		return
 	}
 
-	if err := service.Snapshots(); err != nil {
+	var ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := service.Snapshots(ctx); err != nil {
 		logger.Errorf("List Spanshots error: %v", err)
 	}
 }

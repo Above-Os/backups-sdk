@@ -10,11 +10,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Space) Restore() (restoreSummary *restic.RestoreSummaryOutput, err error) {
+func (s *Space) Restore(ctx context.Context) (restoreSummary *restic.RestoreSummaryOutput, err error) {
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 
-	if err = s.getStsToken(); err != nil {
+	if err = s.getStsToken(ctx); err != nil {
 		return
 	}
 
@@ -57,7 +57,7 @@ func (s *Space) Restore() (restoreSummary *restic.RestoreSummaryOutput, err erro
 			switch err.Error() {
 			case restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error():
 				logger.Infof("space restore download stopped, sts token expired, refresh and retring...")
-				if err = s.refreshStsTokens(); err != nil {
+				if err = s.refreshStsTokens(ctx); err != nil {
 					err = fmt.Errorf("space restore download sts token service refresh-token error: %v", err)
 					return
 				}

@@ -1,6 +1,7 @@
 package s3
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -24,7 +25,7 @@ type Aws struct {
 	BaseHandler       base.Interface
 }
 
-func (s *Aws) Backup() (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
+func (s *Aws) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
 	storageInfo, err = s.FormatRepository()
 	if err != nil {
 		return
@@ -40,11 +41,11 @@ func (s *Aws) Backup() (backupSummary *restic.SummaryOutput, storageInfo *model.
 
 	s.BaseHandler.SetOptions(opts)
 
-	backupSummary, err = s.BaseHandler.Backup()
+	backupSummary, err = s.BaseHandler.Backup(ctx)
 	return backupSummary, storageInfo, err
 }
 
-func (s *Aws) Restore() (restoreSummary *restic.RestoreSummaryOutput, err error) {
+func (s *Aws) Restore(ctx context.Context) (restoreSummary *restic.RestoreSummaryOutput, err error) {
 	storageInfo, err := s.FormatRepository()
 	if err != nil {
 		return
@@ -57,10 +58,10 @@ func (s *Aws) Restore() (restoreSummary *restic.RestoreSummaryOutput, err error)
 	}
 
 	s.BaseHandler.SetOptions(opts)
-	return s.BaseHandler.Restore()
+	return s.BaseHandler.Restore(ctx)
 }
 
-func (s *Aws) Snapshots() error {
+func (s *Aws) Snapshots(ctx context.Context) error {
 	storageInfo, err := s.FormatRepository()
 	if err != nil {
 		return err
@@ -73,7 +74,7 @@ func (s *Aws) Snapshots() error {
 	}
 
 	s.BaseHandler.SetOptions(opts)
-	return s.BaseHandler.Snapshots()
+	return s.BaseHandler.Snapshots(ctx)
 }
 
 func (s *Aws) Regions() ([]map[string]string, error) {

@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
@@ -14,9 +13,9 @@ import (
 )
 
 type Location interface {
-	Backup() (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error)
-	Restore() (restoreSummary *restic.RestoreSummaryOutput, err error)
-	Snapshots() error
+	Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error)
+	Restore(ctx context.Context) (restoreSummary *restic.RestoreSummaryOutput, err error)
+	Snapshots(ctx context.Context) error
 	Regions() ([]map[string]string, error)
 
 	GetEnv(repository string) *restic.ResticEnvs
@@ -34,11 +33,11 @@ func (d *BaseHandler) SetOptions(opts *restic.ResticOptions) {
 	d.opts = opts
 }
 
-func (d *BaseHandler) Backup() (backupSummary *restic.SummaryOutput, err error) {
+func (d *BaseHandler) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, err error) {
 	var repoName = d.opts.RepoName
 	var path = d.opts.Path
 
-	r, err := restic.NewRestic(context.Background(), d.opts)
+	r, err := restic.NewRestic(ctx, d.opts)
 	if err != nil {
 		return
 	}
@@ -115,13 +114,13 @@ func (d *BaseHandler) Backup() (backupSummary *restic.SummaryOutput, err error) 
 	return
 }
 
-func (h *BaseHandler) Restore() (restoreSummary *restic.RestoreSummaryOutput, err error) {
+func (h *BaseHandler) Restore(ctx context.Context) (restoreSummary *restic.RestoreSummaryOutput, err error) {
 	var snapshotId = h.opts.SnapshotId
 	var path = h.opts.Path
 	logger.Debugf("restore env vars: %s", utils.Base64encode([]byte(h.opts.RepoEnvs.String())))
 
 	var re *restic.Restic
-	re, err = restic.NewRestic(context.Background(), h.opts)
+	re, err = restic.NewRestic(ctx, h.opts)
 	if err != nil {
 		return
 	}
@@ -145,11 +144,9 @@ func (h *BaseHandler) Restore() (restoreSummary *restic.RestoreSummaryOutput, er
 	return
 }
 
-func (h *BaseHandler) Snapshots() error {
+func (h *BaseHandler) Snapshots(ctx context.Context) error {
 	logger.Debugf("snapshots env vars: %s", utils.Base64encode([]byte(h.opts.RepoEnvs.String())))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
 	r, err := restic.NewRestic(ctx, h.opts)
 	if err != nil {
 		return err

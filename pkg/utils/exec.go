@@ -27,7 +27,7 @@ type CommandOptions struct {
 }
 
 func NewCommand(ctx context.Context, opts CommandOptions) *Command {
-	var cmdCtx, cancel = context.WithCancel(context.Background())
+	var cmdCtx, cancel = context.WithCancel(ctx)
 	return &Command{
 		options: opts,
 		ctx:     cmdCtx,

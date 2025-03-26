@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"strings"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
@@ -18,6 +19,7 @@ import (
 type BackupOption struct {
 	Basedir      string
 	Password     string
+	Ctx          context.Context
 	Logger       *zap.SugaredLogger
 	Space        *options.SpaceBackupOption
 	Aws          *options.AwsBackupOption
@@ -99,5 +101,5 @@ func (b *BackupService) Backup() (*restic.SummaryOutput, *model.StorageInfo, err
 		logger.Fatalf("There is no suitable recovery method.")
 	}
 
-	return service.Backup()
+	return service.Backup(b.option.Ctx)
 }

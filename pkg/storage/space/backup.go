@@ -11,11 +11,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Space) Backup() (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
-	ctx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
-
-	if err = s.getStsToken(); err != nil {
+func (s *Space) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
+	if err = s.getStsToken(ctx); err != nil {
 		return
 	}
 
@@ -83,9 +80,12 @@ func (s *Space) Backup() (backupSummary *restic.SummaryOutput, storageInfo *mode
 		backupSummary, err = r.Backup(s.Path, "", tags)
 		if err != nil {
 			switch err.Error() {
+			case restic.ERROR_MESSAGE_BACKUP_CANCELED.Error():
+				logger.Infof("backup canceled, stopping...")
+				return
 			case restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error():
 				logger.Infof("space backup upload stopped, sts token expired, refresh and retring...")
-				if err = s.refreshStsTokens(); err != nil {
+				if err = s.refreshStsTokens(ctx); err != nil {
 					err = fmt.Errorf("space backup upload sts token service refresh-token error: %v", err)
 					return
 				}

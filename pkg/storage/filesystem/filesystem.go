@@ -1,6 +1,7 @@
 package filesystem
 
 import (
+	"context"
 	"path"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/constants"
@@ -19,7 +20,7 @@ type Filesystem struct {
 	BaseHandler base.Interface
 }
 
-func (f *Filesystem) Backup() (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
+func (f *Filesystem) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
 	storageInfo, err = f.FormatRepository()
 	if err != nil {
 		return
@@ -32,11 +33,11 @@ func (f *Filesystem) Backup() (backupSummary *restic.SummaryOutput, storageInfo 
 	}
 
 	f.BaseHandler.SetOptions(opts)
-	backupSummary, err = f.BaseHandler.Backup()
+	backupSummary, err = f.BaseHandler.Backup(ctx)
 	return backupSummary, storageInfo, err
 }
 
-func (f *Filesystem) Restore() (restoreSummary *restic.RestoreSummaryOutput, err error) {
+func (f *Filesystem) Restore(ctx context.Context) (restoreSummary *restic.RestoreSummaryOutput, err error) {
 	storageInfo, err := f.FormatRepository()
 	if err != nil {
 		return
@@ -48,10 +49,10 @@ func (f *Filesystem) Restore() (restoreSummary *restic.RestoreSummaryOutput, err
 	}
 
 	f.BaseHandler.SetOptions(opts)
-	return f.BaseHandler.Restore()
+	return f.BaseHandler.Restore(ctx)
 }
 
-func (f *Filesystem) Snapshots() error {
+func (f *Filesystem) Snapshots(ctx context.Context) error {
 	storageInfo, err := f.FormatRepository()
 	if err != nil {
 		return err
@@ -64,7 +65,7 @@ func (f *Filesystem) Snapshots() error {
 	}
 
 	f.BaseHandler.SetOptions(opts)
-	return f.BaseHandler.Snapshots()
+	return f.BaseHandler.Snapshots(ctx)
 }
 
 func (f *Filesystem) Regions() ([]map[string]string, error) {

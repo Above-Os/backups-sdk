@@ -1,6 +1,7 @@
 package cos
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -26,7 +27,7 @@ type TencentCloud struct {
 	BaseHandler       base.Interface
 }
 
-func (c *TencentCloud) Backup() (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
+func (c *TencentCloud) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
 	storageInfo, err = c.FormatRepository()
 	if err != nil {
 		return
@@ -43,11 +44,11 @@ func (c *TencentCloud) Backup() (backupSummary *restic.SummaryOutput, storageInf
 
 	c.BaseHandler.SetOptions(opts)
 
-	backupSummary, err = c.BaseHandler.Backup()
+	backupSummary, err = c.BaseHandler.Backup(ctx)
 	return backupSummary, storageInfo, err
 }
 
-func (c *TencentCloud) Restore() (restoreSummary *restic.RestoreSummaryOutput, err error) {
+func (c *TencentCloud) Restore(ctx context.Context) (restoreSummary *restic.RestoreSummaryOutput, err error) {
 	storageInfo, err := c.FormatRepository()
 	if err != nil {
 		return
@@ -60,10 +61,10 @@ func (c *TencentCloud) Restore() (restoreSummary *restic.RestoreSummaryOutput, e
 	}
 
 	c.BaseHandler.SetOptions(opts)
-	return c.BaseHandler.Restore()
+	return c.BaseHandler.Restore(ctx)
 }
 
-func (c *TencentCloud) Snapshots() error {
+func (c *TencentCloud) Snapshots(ctx context.Context) error {
 	storageInfo, err := c.FormatRepository()
 	if err != nil {
 		return err
@@ -77,7 +78,7 @@ func (c *TencentCloud) Snapshots() error {
 	}
 
 	c.BaseHandler.SetOptions(opts)
-	return c.BaseHandler.Snapshots()
+	return c.BaseHandler.Snapshots(ctx)
 }
 
 func (c *TencentCloud) Regions() ([]map[string]string, error) {

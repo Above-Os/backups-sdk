@@ -1,6 +1,7 @@
 package space
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -50,14 +51,14 @@ type StsToken struct {
 	ClusterId    string `json:"cluster_id"`
 }
 
-func (s *StsToken) RefreshStsToken(cloudApiMirror string) error {
+func (s *StsToken) RefreshStsToken(ctx context.Context, cloudApiMirror string) error {
 	logger.Infof("refresh sts token")
 
 	var url = s.getRequestSpaceRefreshStsUrl(cloudApiMirror)
 	var headers = s.getRequestSpaceStsHeaders()
 	var data = s.getRequestSpaceRefreshStsData()
 
-	result, err := utils.Post[CloudStorageAccountResponse](url, headers, data)
+	result, err := utils.Post[CloudStorageAccountResponse](ctx, url, headers, data)
 	if err != nil {
 		return err
 	}
@@ -80,7 +81,7 @@ func (s *StsToken) RefreshStsToken(cloudApiMirror string) error {
 	return nil
 }
 
-func (s *StsToken) GetStsToken(olaresDid, accessToken,
+func (s *StsToken) GetStsToken(ctx context.Context, olaresDid, accessToken,
 	cloudName, regionId, clusterId,
 	cloudApiMirror string) error {
 	logger.Info("get sts token")
@@ -91,7 +92,7 @@ func (s *StsToken) GetStsToken(olaresDid, accessToken,
 	var headers = s.getRequestSpaceStsHeaders()
 	var data = s.getRequestSpaceStsData(olaresDid, accessToken, cloudName, regionId, clusterId)
 
-	result, err := utils.Post[CloudStorageAccountResponse](url, headers, data)
+	result, err := utils.Post[CloudStorageAccountResponse](ctx, url, headers, data)
 	if err != nil {
 		return err
 	}
