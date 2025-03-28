@@ -1,6 +1,8 @@
 package restore
 
 import (
+	"context"
+
 	"bytetrade.io/web3os/backups-sdk/pkg/constants"
 	"bytetrade.io/web3os/backups-sdk/pkg/options"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage"
@@ -28,7 +30,7 @@ func NewCmdSpace() *cobra.Command {
 		Use:   "space",
 		Short: "Restore data from Space",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Space: o, Operator: constants.StorageOperatorCli})
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Ctx: context.TODO(), Space: o, Operator: constants.StorageOperatorCli})
 			restoreService.Restore()
 		},
 	}
@@ -42,7 +44,7 @@ func NewCmdS3() *cobra.Command {
 		Use:   "s3",
 		Short: "Restore data from Amazon S3 or S3-compatible storage",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Aws: o, Operator: constants.StorageOperatorCli})
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Ctx: context.TODO(), Aws: o, Operator: constants.StorageOperatorCli})
 			restoreService.Restore()
 		},
 	}
@@ -56,7 +58,7 @@ func NewCmdCos() *cobra.Command {
 		Use:   "cos",
 		Short: "Restore data from Tencent Cloud Object Storage (COS)",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = storage.NewRestoreService(&storage.RestoreOption{TencentCloud: o, Operator: constants.StorageOperatorCli})
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Ctx: context.TODO(), TencentCloud: o, Operator: constants.StorageOperatorCli})
 			restoreService.Restore()
 		},
 	}
@@ -70,7 +72,7 @@ func NewCmdFs() *cobra.Command {
 		Use:   "fs",
 		Short: "Restore data from the local filesystem or disk",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Filesystem: o, Operator: constants.StorageOperatorCli})
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Ctx: context.TODO(), Filesystem: o, Operator: constants.StorageOperatorCli})
 			restoreService.Restore()
 		},
 	}

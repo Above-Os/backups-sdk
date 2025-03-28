@@ -1,6 +1,8 @@
 package backup
 
 import (
+	"context"
+
 	"bytetrade.io/web3os/backups-sdk/pkg/constants"
 	"bytetrade.io/web3os/backups-sdk/pkg/options"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage"
@@ -28,7 +30,7 @@ func NewCmdSpace() *cobra.Command {
 		Use:   "space",
 		Short: "Backup data to the Space",
 		Run: func(cmd *cobra.Command, args []string) {
-			var backupService = storage.NewBackupService(&storage.BackupOption{Space: o, Operator: constants.StorageOperatorCli})
+			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.TODO(), Space: o, Operator: constants.StorageOperatorCli})
 			backupService.Backup()
 		},
 	}
@@ -42,7 +44,7 @@ func NewCmdS3() *cobra.Command {
 		Use:   "s3",
 		Short: "Backup data to Amazon S3 or S3-compatible storage",
 		Run: func(cmd *cobra.Command, args []string) {
-			var backupService = storage.NewBackupService(&storage.BackupOption{Aws: o, Operator: constants.StorageOperatorCli})
+			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.TODO(), Aws: o, Operator: constants.StorageOperatorCli})
 			backupService.Backup()
 		},
 	}
@@ -56,7 +58,7 @@ func NewCmdCos() *cobra.Command {
 		Use:   "cos",
 		Short: "Backup data to Tencent Cloud Object Storage (COS)",
 		Run: func(cmd *cobra.Command, args []string) {
-			var backupService = storage.NewBackupService(&storage.BackupOption{TencentCloud: o, Operator: constants.StorageOperatorCli})
+			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.TODO(), TencentCloud: o, Operator: constants.StorageOperatorCli})
 			backupService.Backup()
 		},
 	}
@@ -70,7 +72,7 @@ func NewCmdFs() *cobra.Command {
 		Use:   "fs",
 		Short: "Backup data to the local filesystem or disk",
 		Run: func(cmd *cobra.Command, args []string) {
-			var backupService = storage.NewBackupService(&storage.BackupOption{Filesystem: o, Operator: constants.StorageOperatorCli})
+			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.TODO(), Filesystem: o, Operator: constants.StorageOperatorCli})
 			backupService.Backup()
 		},
 	}
