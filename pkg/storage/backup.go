@@ -19,6 +19,7 @@ import (
 type BackupOption struct {
 	Basedir      string
 	Password     string
+	Operator     string
 	Ctx          context.Context
 	Logger       *zap.SugaredLogger
 	Space        *options.SpaceBackupOption
@@ -66,6 +67,7 @@ func (b *BackupService) Backup() (*restic.SummaryOutput, *model.StorageInfo, err
 			LimitUploadRate: b.option.Space.LimitUploadRate,
 			Password:        password,
 			StsToken:        &space.StsToken{},
+			Operator:        b.option.Operator,
 		}
 	} else if b.option.Aws != nil {
 		service = &s3.Aws{
@@ -77,6 +79,7 @@ func (b *BackupService) Backup() (*restic.SummaryOutput, *model.StorageInfo, err
 			LimitUploadRate: b.option.Aws.LimitUploadRate,
 			Password:        password,
 			BaseHandler:     &BaseHandler{},
+			Operator:        b.option.Operator,
 		}
 	} else if b.option.TencentCloud != nil {
 		service = &cos.TencentCloud{
@@ -88,6 +91,7 @@ func (b *BackupService) Backup() (*restic.SummaryOutput, *model.StorageInfo, err
 			LimitUploadRate: b.option.TencentCloud.LimitUploadRate,
 			Password:        password,
 			BaseHandler:     &BaseHandler{},
+			Operator:        b.option.Operator,
 		}
 	} else if b.option.Filesystem != nil {
 		service = &filesystem.Filesystem{
@@ -96,6 +100,7 @@ func (b *BackupService) Backup() (*restic.SummaryOutput, *model.StorageInfo, err
 			Path:        b.option.Filesystem.Path,
 			Password:    password,
 			BaseHandler: &BaseHandler{},
+			Operator:    b.option.Operator,
 		}
 	} else {
 		logger.Fatalf("There is no suitable recovery method.")

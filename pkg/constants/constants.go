@@ -25,4 +25,7 @@ const (
 	BackupCreate   = "create"
 	BackupError    = "error"
 	BackupComplete = "complete"
+
+	StorageOperatorCli = "cli"
+	StorageOperatorApp = "app"
 )

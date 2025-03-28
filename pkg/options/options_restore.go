@@ -9,6 +9,7 @@ var _ Option = &SpaceRestoreOption{}
 
 type SpaceRestoreOption struct {
 	RepoName          string
+	RepoSuffix        string
 	SnapshotId        string
 	Path              string
 	LimitDownloadRate string
@@ -26,6 +27,7 @@ func NewRestoreSpaceOption() *SpaceRestoreOption {
 
 func (o *SpaceRestoreOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
+	cmd.Flags().StringVarP(&o.RepoSuffix, "repo-suffix", "", "", "Backup repo suffix")
 	cmd.Flags().StringVarP(&o.SnapshotId, "snapshot-id", "", "", "Snapshot ID")
 	cmd.Flags().StringVarP(&o.Path, "path", "", "", "The directory to be restore")
 	cmd.Flags().StringVarP(&o.LimitDownloadRate, "limit-download-rate", "", "", "Limits downloads to a maximum rate in KiB/s. (default: unlimited)")

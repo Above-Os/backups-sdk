@@ -17,6 +17,7 @@ import (
 
 type RestoreOption struct {
 	Password     string
+	Operator     string
 	Ctx          context.Context
 	Logger       *zap.SugaredLogger
 	Space        *options.SpaceRestoreOption
@@ -52,7 +53,9 @@ func (r *RestoreService) Restore() (restoreSummary *restic.RestoreSummaryOutput,
 
 	if r.option.Space != nil {
 		service = &space.Space{
-			RepoName:          r.option.Space.RepoName,
+			RepoName: r.option.Space.RepoName,
+			// When restoring from BackupURL on a new machine, it is necessary to extract the Suffix from the Prefix of the backup in the BackupURL
+			RepoSuffix:        r.option.Space.RepoSuffix,
 			SnapshotId:        r.option.Space.SnapshotId,
 			Path:              r.option.Space.Path,
 			OlaresDid:         r.option.Space.OlaresDid,
@@ -64,6 +67,7 @@ func (r *RestoreService) Restore() (restoreSummary *restic.RestoreSummaryOutput,
 			Password:          password,
 			LimitDownloadRate: r.option.Space.LimitDownloadRate,
 			StsToken:          &space.StsToken{},
+			Operator:          r.option.Operator,
 		}
 	} else if r.option.Aws != nil {
 		service = &s3.Aws{
@@ -76,6 +80,7 @@ func (r *RestoreService) Restore() (restoreSummary *restic.RestoreSummaryOutput,
 			LimitDownloadRate: r.option.Aws.LimitDownloadRate,
 			Password:          password,
 			BaseHandler:       &BaseHandler{},
+			Operator:          r.option.Operator,
 		}
 	} else if r.option.TencentCloud != nil {
 		service = &cos.TencentCloud{
@@ -88,6 +93,7 @@ func (r *RestoreService) Restore() (restoreSummary *restic.RestoreSummaryOutput,
 			LimitDownloadRate: r.option.TencentCloud.LimitDownloadRate,
 			Password:          password,
 			BaseHandler:       &BaseHandler{},
+			Operator:          r.option.Operator,
 		}
 
 	} else if r.option.Filesystem != nil {
@@ -98,6 +104,7 @@ func (r *RestoreService) Restore() (restoreSummary *restic.RestoreSummaryOutput,
 			Path:        r.option.Filesystem.Path,
 			Password:    password,
 			BaseHandler: &BaseHandler{},
+			Operator:    r.option.Operator,
 		}
 	} else {
 		logger.Fatalf("There is no suitable recovery method.")

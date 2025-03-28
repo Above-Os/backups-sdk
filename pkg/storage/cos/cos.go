@@ -25,6 +25,7 @@ type TencentCloud struct {
 	LimitDownloadRate string
 	Path              string
 	BaseHandler       base.Interface
+	Operator          string
 }
 
 func (c *TencentCloud) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {

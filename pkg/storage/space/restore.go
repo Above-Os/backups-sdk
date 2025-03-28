@@ -23,8 +23,6 @@ func (s *Space) Restore(ctx context.Context) (restoreSummary *restic.RestoreSumm
 		return
 	}
 
-	var restoreResult *restic.RestoreSummaryOutput
-
 	for {
 		var envs = s.GetEnv(storageInfo.Url)
 		var opts = &restic.ResticOptions{
@@ -67,7 +65,7 @@ func (s *Space) Restore(ctx context.Context) (restoreSummary *restic.RestoreSumm
 			}
 		}
 
-		logger.Infof("Restore successful, name: %s, result: %s", s.RepoName, utils.ToJSON(restoreResult))
+		logger.Infof("Restore successful, name: %s, result: %s", s.RepoName, utils.ToJSON(restoreSummary))
 
 		break
 	}

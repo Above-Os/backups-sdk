@@ -82,7 +82,7 @@ func (s *StsToken) RefreshStsToken(ctx context.Context, cloudApiMirror string) e
 }
 
 func (s *StsToken) GetStsToken(ctx context.Context, olaresDid, accessToken,
-	cloudName, regionId, clusterId,
+	cloudName, regionId, clusterId, prevOlaresDidPrefixSuffix,
 	cloudApiMirror string) error {
 	logger.Info("get sts token")
 
@@ -90,7 +90,7 @@ func (s *StsToken) GetStsToken(ctx context.Context, olaresDid, accessToken,
 
 	var url = s.getRequestSpaceStsUrl(cloudApiMirror)
 	var headers = s.getRequestSpaceStsHeaders()
-	var data = s.getRequestSpaceStsData(olaresDid, accessToken, cloudName, regionId, clusterId)
+	var data = s.getRequestSpaceStsData(olaresDid, accessToken, cloudName, regionId, clusterId, prevOlaresDidPrefixSuffix)
 
 	result, err := utils.Post[CloudStorageAccountResponse](ctx, url, headers, data)
 	if err != nil {
@@ -100,7 +100,7 @@ func (s *StsToken) GetStsToken(ctx context.Context, olaresDid, accessToken,
 	queryResp := result
 
 	if queryResp.Code == 506 {
-		return fmt.Errorf("user access token expired")
+		return fmt.Errorf("response code %d", queryResp.Code)
 	}
 
 	if queryResp.Data == nil {
@@ -143,9 +143,9 @@ func (s *StsToken) getRequestSpaceStsHeaders() map[string]string {
 	return headers
 }
 
-func (s *StsToken) getRequestSpaceStsData(olaresDid, token, location, region, clusterId string) string {
-	var data = fmt.Sprintf("cloudName=%s&durationSeconds=%s&region=%s&token=%s&userid=%s&clusterId=%s",
-		location, fmt.Sprintf("%.0f", s.parseSpaceStsDuration().Seconds()), region, token, olaresDid, s.parseClusterId(clusterId))
+func (s *StsToken) getRequestSpaceStsData(olaresDid, token, location, region, clusterId, prevOlaresDidPrefixSuffix string) string {
+	var data = fmt.Sprintf("cloudName=%s&durationSeconds=%s&region=%s&token=%s&userid=%s&clusterId=%s&backupPrefix=%s",
+		location, fmt.Sprintf("%.0f", s.parseSpaceStsDuration().Seconds()), region, token, olaresDid, s.parseClusterId(clusterId), prevOlaresDidPrefixSuffix)
 	return data
 }
 

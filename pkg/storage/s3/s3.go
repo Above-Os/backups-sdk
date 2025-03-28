@@ -23,6 +23,7 @@ type Aws struct {
 	LimitDownloadRate string
 	Path              string
 	BaseHandler       base.Interface
+	Operator          string
 }
 
 func (s *Aws) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {

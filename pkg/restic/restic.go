@@ -70,6 +70,7 @@ const (
 
 type ResticOptions struct {
 	RepoName          string
+	RepoSuffix        string
 	CloudName         string
 	RegionId          string
 	SnapshotId        string

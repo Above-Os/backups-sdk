@@ -21,6 +21,11 @@ func (s *Space) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput
 		return
 	}
 
+	repoSuffix, err := utils.GetSuffix(s.StsToken.Prefix, "-")
+	if err != nil {
+		return
+	}
+
 	// backupType = constants.FullyBackup
 
 	for {
@@ -30,6 +35,7 @@ func (s *Space) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput
 		var envs = s.GetEnv(storageInfo.Url)
 		var opts = &restic.ResticOptions{
 			RepoName:        s.RepoName,
+			RepoSuffix:      repoSuffix,
 			CloudName:       s.CloudName,
 			RegionId:        s.RegionId,
 			RepoEnvs:        envs,
@@ -75,6 +81,7 @@ func (s *Space) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput
 
 		var tags = []string{
 			fmt.Sprintf("repo-name=%s", s.RepoName),
+			fmt.Sprintf("repo-suffix=%s", repoSuffix),
 		}
 
 		backupSummary, err = r.Backup(s.Path, "", tags)

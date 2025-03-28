@@ -17,6 +17,7 @@ import (
 
 type Space struct {
 	RepoName          string
+	RepoSuffix        string
 	SnapshotId        string
 	OlaresDid         string
 	AccessToken       string
@@ -29,6 +30,7 @@ type Space struct {
 	LimitDownloadRate string
 	CloudApiMirror    string
 	StsToken          *StsToken
+	Operator          string
 }
 
 type StorageResponse struct {
@@ -137,7 +139,7 @@ func (s *Space) FormatRepository() (storageInfo *model.StorageInfo, err error) {
 }
 
 func (s *Space) getStsToken(ctx context.Context) error {
-	if err := s.StsToken.GetStsToken(ctx, s.OlaresDid, s.AccessToken, s.CloudName, s.RegionId, s.ClusterId, s.getCloudApi()); err != nil {
+	if err := s.StsToken.GetStsToken(ctx, s.OlaresDid, s.AccessToken, s.CloudName, s.RegionId, s.ClusterId, s.RepoSuffix, s.getCloudApi()); err != nil {
 		return errors.WithStack(fmt.Errorf("get sts token error: %v", err))
 	}
 	return nil

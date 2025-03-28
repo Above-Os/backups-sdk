@@ -51,3 +51,10 @@ func DefaultValue(defaultValue string, newValue string) string {
 func TrimRight(content string, suffix string) string {
 	return strings.TrimRight(content, suffix)
 }
+
+func ParseEncrypt(name string, encrypt bool) string {
+	if encrypt {
+		return MD5(name)
+	}
+	return name
+}

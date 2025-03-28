@@ -18,6 +18,7 @@ type Filesystem struct {
 	Password    string
 	Path        string
 	BaseHandler base.Interface
+	Operator    string
 }
 
 func (f *Filesystem) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
