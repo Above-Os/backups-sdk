@@ -50,3 +50,9 @@ func NewRestoreService(option *storage.RestoreOption) *storage.RestoreService {
 
 	return storage.NewRestoreService(option)
 }
+
+func NewRegionService(option *storage.RegionOption) *storage.RegionService {
+	logger.SetLogger(option.Logger)
+
+	return storage.NewRegionService(option)
+}
