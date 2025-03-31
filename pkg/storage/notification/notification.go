@@ -1,6 +1,7 @@
 package notification
 
 import (
+	"context"
 	"fmt"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/constants"
@@ -50,7 +51,7 @@ func SendNewBackup(cloudApiUrl string, backup *Backup) error {
 
 	logger.Infof("send backup data: %s", data)
 
-	result, err := utils.Post[Response](url, headers, data)
+	result, err := utils.Post[Response](context.Background(), url, headers, data)
 	if err != nil {
 		return err
 	}
@@ -74,7 +75,7 @@ func SendNewSnapshot(cloudApiUrl string, snapshot *Snapshot) error {
 
 	logger.Infof("send snapshot data: %s", data)
 
-	result, err := utils.Post[Response](url, headers, data)
+	result, err := utils.Post[Response](context.Background(), url, headers, data)
 	if err != nil {
 		return err
 	}

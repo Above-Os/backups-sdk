@@ -14,7 +14,7 @@ import (
 
 type Location interface {
 	Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error)
-	Restore(ctx context.Context) (restoreSummary *restic.RestoreSummaryOutput, err error)
+	Restore(ctx context.Context, progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error)
 	Snapshots(ctx context.Context) error
 	Regions() ([]map[string]string, error)
 
@@ -114,7 +114,7 @@ func (d *BaseHandler) Backup(ctx context.Context) (backupSummary *restic.Summary
 	return
 }
 
-func (h *BaseHandler) Restore(ctx context.Context) (restoreSummary *restic.RestoreSummaryOutput, err error) {
+func (h *BaseHandler) Restore(ctx context.Context, progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error) {
 	var snapshotId = h.opts.SnapshotId
 	var path = h.opts.Path
 	logger.Debugf("restore env vars: %s", utils.Base64encode([]byte(h.opts.RepoEnvs.String())))
@@ -133,7 +133,7 @@ func (h *BaseHandler) Restore(ctx context.Context) (restoreSummary *restic.Resto
 	var uploadPath = snapshotSummary.Paths[0]
 	logger.Infof("restore spanshot %s detail: %s", snapshotId, utils.ToJSON(snapshotSummary))
 
-	restoreSummary, err = re.Restore(snapshotId, uploadPath, path)
+	restoreSummary, err = re.Restore(snapshotId, uploadPath, path, progressCallback)
 	if err != nil {
 		err = fmt.Errorf("restore %s snapshot %s error: %v", h.opts.RepoName, h.opts.SnapshotId, err)
 		return

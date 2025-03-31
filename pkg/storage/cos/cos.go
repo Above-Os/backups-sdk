@@ -49,7 +49,7 @@ func (c *TencentCloud) Backup(ctx context.Context) (backupSummary *restic.Summar
 	return backupSummary, storageInfo, err
 }
 
-func (c *TencentCloud) Restore(ctx context.Context) (restoreSummary *restic.RestoreSummaryOutput, err error) {
+func (c *TencentCloud) Restore(ctx context.Context, progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error) {
 	storageInfo, err := c.FormatRepository()
 	if err != nil {
 		return
@@ -62,7 +62,7 @@ func (c *TencentCloud) Restore(ctx context.Context) (restoreSummary *restic.Rest
 	}
 
 	c.BaseHandler.SetOptions(opts)
-	return c.BaseHandler.Restore(ctx)
+	return c.BaseHandler.Restore(ctx, progressCallback)
 }
 
 func (c *TencentCloud) Snapshots(ctx context.Context) error {

@@ -521,18 +521,18 @@ func (r *Restic) GetSnapshots(tags []string) (*SnapshotList, error) {
 	return summary, nil
 }
 
-func (r *Restic) Restore(snapshotId string, uploadPath string, target string) (*RestoreSummaryOutput, error) {
+func (r *Restic) Restore(snapshotId string, uploadPath string, target string, progressCallback func(percentDone float64)) (*RestoreSummaryOutput, error) {
 	r.addCommand([]string{"restore", r.opt.SetLimitDownloadRate(), "-t", target, "-v=3", PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS, fmt.Sprintf("%s:%s", snapshotId, uploadPath)}).addExtended().addRequestTimeout()
 
-	var restoreCtx, cancel = context.WithCancel(r.ctx)
-	defer cancel()
+	// var restoreCtx, cancel = context.WithCancel(r.ctx)
+	// defer cancel()
 	opts := utils.CommandOptions{
 		Path: r.dir,
 		Args: r.args,
 		Envs: r.opt.RepoEnvs.Kv(),
 	}
 
-	c := utils.NewCommand(restoreCtx, opts)
+	c := utils.NewCommand(r.ctx, opts)
 
 	var prevPercent float64
 	var started bool
@@ -584,11 +584,13 @@ func (r *Restic) Restore(snapshotId string, uploadPath string, target string) (*
 						if !started {
 							logger.Infof(PRINT_RESTORE_START_MESSAGE, status.TotalFiles, utils.FormatBytes(status.TotalBytes))
 							started = true
+							progressCallback(status.PercentDone)
 						}
 					case math.Abs(status.PercentDone-1.0) < tolerance:
 						if !finished {
 							logger.Infof(PRINT_RESTORE_FINISH_MESSAGE, snapshotId, status.TotalFiles, status.FilesRestored, utils.FormatBytes(status.TotalBytes), utils.FormatBytes(status.BytesRestored))
 							finished = true
+							progressCallback(status.PercentDone)
 						}
 					default:
 						if prevPercent != status.PercentDone {
@@ -599,6 +601,7 @@ func (r *Restic) Restore(snapshotId string, uploadPath string, target string) (*
 								utils.FormatBytes(status.BytesRestored),
 								utils.FormatBytes(status.TotalBytes),
 							)
+							progressCallback(status.PercentDone)
 						}
 						prevPercent = status.PercentDone
 					}
@@ -619,6 +622,7 @@ func (r *Restic) Restore(snapshotId string, uploadPath string, target string) (*
 						return
 					}
 					restoreMessagePool.Put(status)
+					progressCallback(1.0)
 					return
 				}
 				restoreMessagePool.Put(status)
@@ -626,6 +630,7 @@ func (r *Restic) Restore(snapshotId string, uploadPath string, target string) (*
 			}
 		}
 	}()
+
 	_, err := c.Run()
 	if err != nil {
 		return nil, err

@@ -40,7 +40,7 @@ func NewRestoreService(option *RestoreOption) *RestoreService {
 	return restoreService
 }
 
-func (r *RestoreService) Restore() (restoreSummary *restic.RestoreSummaryOutput, err error) {
+func (r *RestoreService) Restore(progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error) {
 	var password = r.password
 	if password == "" {
 		password, err = utils.InputPasswordWithConfirm(false)
@@ -110,5 +110,5 @@ func (r *RestoreService) Restore() (restoreSummary *restic.RestoreSummaryOutput,
 		logger.Fatalf("There is no suitable recovery method.")
 	}
 
-	return service.Restore(r.option.Ctx)
+	return service.Restore(r.option.Ctx, progressCallback)
 }

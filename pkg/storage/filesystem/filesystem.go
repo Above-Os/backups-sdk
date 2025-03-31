@@ -38,7 +38,7 @@ func (f *Filesystem) Backup(ctx context.Context) (backupSummary *restic.SummaryO
 	return backupSummary, storageInfo, err
 }
 
-func (f *Filesystem) Restore(ctx context.Context) (restoreSummary *restic.RestoreSummaryOutput, err error) {
+func (f *Filesystem) Restore(ctx context.Context, progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error) {
 	storageInfo, err := f.FormatRepository()
 	if err != nil {
 		return
@@ -50,7 +50,7 @@ func (f *Filesystem) Restore(ctx context.Context) (restoreSummary *restic.Restor
 	}
 
 	f.BaseHandler.SetOptions(opts)
-	return f.BaseHandler.Restore(ctx)
+	return f.BaseHandler.Restore(ctx, progressCallback)
 }
 
 func (f *Filesystem) Snapshots(ctx context.Context) error {

@@ -10,9 +10,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Space) Restore(ctx context.Context) (restoreSummary *restic.RestoreSummaryOutput, err error) {
-	ctx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
+func (s *Space) Restore(ctx context.Context, progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error) {
+	// ctx, cancel := context.WithCancel(context.TODO())
+	// defer cancel()
 
 	if err = s.getStsToken(ctx); err != nil {
 		return
@@ -50,7 +50,7 @@ func (s *Space) Restore(ctx context.Context) (restoreSummary *restic.RestoreSumm
 		var backupPath = currentSnapshot.Paths[0]
 		logger.Infof("space restore spanshot %s detail: %s", s.SnapshotId, utils.ToJSON(currentSnapshot))
 
-		restoreSummary, err = r.Restore(s.SnapshotId, backupPath, s.Path)
+		restoreSummary, err = r.Restore(s.SnapshotId, backupPath, s.Path, progressCallback)
 		if err != nil {
 			switch err.Error() {
 			case restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error():

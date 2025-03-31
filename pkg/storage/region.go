@@ -1,12 +1,17 @@
 package storage
 
 import (
+	"context"
+
 	"bytetrade.io/web3os/backups-sdk/pkg/options"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/space"
+	"go.uber.org/zap"
 )
 
 type RegionOption struct {
-	Space *options.SpaceRegionOptions
+	Ctx    context.Context
+	Logger *zap.SugaredLogger
+	Space  *options.SpaceRegionOptions
 }
 
 type RegionService struct {

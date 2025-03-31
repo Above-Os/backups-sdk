@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var p = func(percentDone float64) {}
+
 func NewCmdRestore() *cobra.Command {
 	rootBackupCmds := &cobra.Command{
 		Use:               "restore",
@@ -31,7 +33,7 @@ func NewCmdSpace() *cobra.Command {
 		Short: "Restore data from Space",
 		Run: func(cmd *cobra.Command, args []string) {
 			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Ctx: context.TODO(), Space: o, Operator: constants.StorageOperatorCli})
-			restoreService.Restore()
+			restoreService.Restore(p)
 		},
 	}
 	o.AddFlags(cmd)
@@ -45,7 +47,7 @@ func NewCmdS3() *cobra.Command {
 		Short: "Restore data from Amazon S3 or S3-compatible storage",
 		Run: func(cmd *cobra.Command, args []string) {
 			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Ctx: context.TODO(), Aws: o, Operator: constants.StorageOperatorCli})
-			restoreService.Restore()
+			restoreService.Restore(p)
 		},
 	}
 	o.AddFlags(cmd)
@@ -59,7 +61,7 @@ func NewCmdCos() *cobra.Command {
 		Short: "Restore data from Tencent Cloud Object Storage (COS)",
 		Run: func(cmd *cobra.Command, args []string) {
 			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Ctx: context.TODO(), TencentCloud: o, Operator: constants.StorageOperatorCli})
-			restoreService.Restore()
+			restoreService.Restore(p)
 		},
 	}
 	o.AddFlags(cmd)
@@ -73,7 +75,7 @@ func NewCmdFs() *cobra.Command {
 		Short: "Restore data from the local filesystem or disk",
 		Run: func(cmd *cobra.Command, args []string) {
 			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Ctx: context.TODO(), Filesystem: o, Operator: constants.StorageOperatorCli})
-			restoreService.Restore()
+			restoreService.Restore(p)
 		},
 	}
 	o.AddFlags(cmd)

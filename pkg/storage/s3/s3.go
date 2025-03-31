@@ -46,7 +46,7 @@ func (s *Aws) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, 
 	return backupSummary, storageInfo, err
 }
 
-func (s *Aws) Restore(ctx context.Context) (restoreSummary *restic.RestoreSummaryOutput, err error) {
+func (s *Aws) Restore(ctx context.Context, progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error) {
 	storageInfo, err := s.FormatRepository()
 	if err != nil {
 		return
@@ -59,7 +59,7 @@ func (s *Aws) Restore(ctx context.Context) (restoreSummary *restic.RestoreSummar
 	}
 
 	s.BaseHandler.SetOptions(opts)
-	return s.BaseHandler.Restore(ctx)
+	return s.BaseHandler.Restore(ctx, progressCallback)
 }
 
 func (s *Aws) Snapshots(ctx context.Context) error {
