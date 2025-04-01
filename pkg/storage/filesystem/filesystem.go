@@ -47,6 +47,7 @@ func (f *Filesystem) Restore(ctx context.Context, progressCallback func(percentD
 	var opts = &restic.ResticOptions{
 		RepoName: f.RepoName,
 		RepoEnvs: envs,
+		Path:     f.Path,
 	}
 
 	f.BaseHandler.SetOptions(opts)

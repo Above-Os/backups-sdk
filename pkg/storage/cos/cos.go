@@ -58,6 +58,7 @@ func (c *TencentCloud) Restore(ctx context.Context, progressCallback func(percen
 	var opts = &restic.ResticOptions{
 		RepoName:          c.RepoName,
 		RepoEnvs:          envs,
+		Path:              c.Path,
 		LimitDownloadRate: c.LimitDownloadRate,
 	}
 

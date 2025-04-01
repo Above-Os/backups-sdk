@@ -30,6 +30,7 @@ func (s *Space) Restore(ctx context.Context, progressCallback func(percentDone f
 			CloudName:         s.CloudName,
 			RegionId:          s.RegionId,
 			RepoEnvs:          envs,
+			Path:              s.Path,
 			LimitDownloadRate: s.LimitDownloadRate,
 		}
 
