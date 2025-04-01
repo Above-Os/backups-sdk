@@ -1,7 +1,9 @@
 package backupssdk
 
 import (
+	"errors"
 	"path"
+	"runtime"
 
 	"bytetrade.io/web3os/backups-sdk/cmd/backup"
 	"bytetrade.io/web3os/backups-sdk/cmd/download"
@@ -20,6 +22,10 @@ func NewBackupCommands() *cobra.Command {
 	var jsonLogDir = path.Join(homeDir, constants.DefaultBaseDir, constants.DefaultLogsDir)
 
 	logger.InitLogger(jsonLogDir, true)
+
+	if runtime.GOOS == "windows" {
+		panic(errors.New("Windows system is not currently supported. Please switch to WSL (Windows Subsystem for Linux)."))
+	}
 
 	cmds := &cobra.Command{
 		Use:   "backups",

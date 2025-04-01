@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
+	"runtime"
 
 	"bytetrade.io/web3os/backups-sdk/cmd/backup"
 	"bytetrade.io/web3os/backups-sdk/cmd/download"
@@ -21,6 +23,10 @@ func main() {
 	var jsonLogDir = path.Join(homeDir, constants.DefaultBaseDir, constants.DefaultLogsDir)
 
 	logger.InitLogger(jsonLogDir, true)
+
+	if runtime.GOOS == "windows" {
+		panic(errors.New("Windows system is not currently supported. Please switch to WSL (Windows Subsystem for Linux)."))
+	}
 
 	cmds := &cobra.Command{
 		CompletionOptions: cobra.CompletionOptions{
