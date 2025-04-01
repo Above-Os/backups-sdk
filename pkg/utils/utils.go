@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"strings"
 	"syscall"
 
 	"golang.org/x/term"
@@ -49,4 +50,8 @@ func InputPasswordWithConfirm(confirmRequired bool) (string, error) {
 	fmt.Printf("\n\n")
 
 	return string(confirmed), nil
+}
+
+func ContainsPathSeparator(s string) bool {
+	return strings.ContainsAny(s, `/\`)
 }

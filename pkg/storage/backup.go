@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"strings"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
@@ -41,6 +42,9 @@ func (b *BackupService) Backup() {
 
 	var service Location
 	if b.option.Space != nil {
+		if utils.ContainsPathSeparator(b.option.Space.RepoName) {
+			panic(fmt.Errorf("repo name contains path separator: '\\' or '/', name: %s", b.option.Space.RepoName))
+		}
 		service = &space.Space{
 			RepoName:        b.option.Space.RepoName,
 			OlaresDid:       b.option.Space.OlaresDid,
@@ -55,6 +59,9 @@ func (b *BackupService) Backup() {
 			StsToken:        &space.StsToken{},
 		}
 	} else if b.option.S3 != nil {
+		if utils.ContainsPathSeparator(b.option.S3.RepoName) {
+			panic(fmt.Errorf("repo name contains path separator: '\\' or '/', name: %s", b.option.S3.RepoName))
+		}
 		service = &s3.S3{
 			RepoName:        b.option.S3.RepoName,
 			Endpoint:        b.option.S3.Endpoint,
@@ -66,6 +73,9 @@ func (b *BackupService) Backup() {
 			BaseHandler:     &BaseHandler{},
 		}
 	} else if b.option.Cos != nil {
+		if utils.ContainsPathSeparator(b.option.Cos.RepoName) {
+			panic(fmt.Errorf("repo name contains path separator: '\\' or '/', name: %s", b.option.Cos.RepoName))
+		}
 		service = &cos.Cos{
 			RepoName:        b.option.Cos.RepoName,
 			Endpoint:        b.option.Cos.Endpoint,
@@ -77,6 +87,9 @@ func (b *BackupService) Backup() {
 			BaseHandler:     &BaseHandler{},
 		}
 	} else if b.option.Filesystem != nil {
+		if utils.ContainsPathSeparator(b.option.Filesystem.RepoName) {
+			panic(fmt.Errorf("repo name contains path separator: '\\' or '/', name: %s", b.option.Filesystem.RepoName))
+		}
 		service = &filesystem.Filesystem{
 			RepoName:    b.option.Filesystem.RepoName,
 			Endpoint:    b.option.Filesystem.Endpoint,
