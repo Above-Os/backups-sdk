@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"fmt"
+	"os"
 	"strings"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
@@ -20,6 +22,20 @@ type BackupOption struct {
 	Filesystem *options.FilesystemBackupOption
 }
 
+func (b *BackupOption) GetRepoName() string {
+	if b.Space != nil {
+		return b.Space.RepoName
+	} else if b.S3 != nil {
+		return b.S3.RepoName
+	} else if b.Cos != nil {
+		return b.Cos.RepoName
+	} else if b.Filesystem != nil {
+		return b.Filesystem.RepoName
+	} else {
+		return ""
+	}
+}
+
 type BackupService struct {
 	baseDir string
 	option  *BackupOption
@@ -34,6 +50,11 @@ func NewBackupService(option *BackupOption) *BackupService {
 }
 
 func (b *BackupService) Backup() {
+	if utils.ContainsPathSeparator(b.option.GetRepoName()) {
+		fmt.Printf("Error: repo name contains path separator: '\\' or '/', name: %s\n", b.option.GetRepoName())
+		os.Exit(0)
+	}
+
 	password, err := utils.InputPasswordWithConfirm(true)
 	if err != nil {
 		panic(err)
