@@ -1,42 +1,56 @@
 package storage
 
 import (
+	"context"
 	"strings"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/options"
+	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/cos"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/filesystem"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/model"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/s3"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/space"
 	"bytetrade.io/web3os/backups-sdk/pkg/utils"
+	"go.uber.org/zap"
 )
 
 type BackupOption struct {
-	Basedir    string
-	Space      *options.SpaceBackupOption
-	S3         *options.S3BackupOption
-	Cos        *options.CosBackupOption
-	Filesystem *options.FilesystemBackupOption
+	Basedir      string
+	Password     string
+	Operator     string
+	Ctx          context.Context
+	Logger       *zap.SugaredLogger
+	Space        *options.SpaceBackupOption
+	Aws          *options.AwsBackupOption
+	TencentCloud *options.TencentCloudBackupOption
+	Filesystem   *options.FilesystemBackupOption
 }
 
 type BackupService struct {
-	baseDir string
-	option  *BackupOption
+	baseDir  string
+	password string
+	option   *BackupOption
 }
 
 func NewBackupService(option *BackupOption) *BackupService {
 	var backupService = &BackupService{
-		option: option,
+		password: option.Password,
+		option:   option,
 	}
 
 	return backupService
 }
 
-func (b *BackupService) Backup() {
-	password, err := utils.InputPasswordWithConfirm(true)
-	if err != nil {
-		panic(err)
+func (b *BackupService) Backup() (*restic.SummaryOutput, *model.StorageInfo, error) {
+	var password = b.password
+	var err error
+	if password == "" {
+		password, err = utils.InputPasswordWithConfirm(true)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	var service Location
@@ -53,28 +67,31 @@ func (b *BackupService) Backup() {
 			LimitUploadRate: b.option.Space.LimitUploadRate,
 			Password:        password,
 			StsToken:        &space.StsToken{},
+			Operator:        b.option.Operator,
 		}
-	} else if b.option.S3 != nil {
-		service = &s3.S3{
-			RepoName:        b.option.S3.RepoName,
-			Endpoint:        b.option.S3.Endpoint,
-			AccessKey:       b.option.S3.AccessKey,
-			SecretAccessKey: b.option.S3.SecretAccessKey,
-			Path:            b.option.S3.Path,
-			LimitUploadRate: b.option.S3.LimitUploadRate,
+	} else if b.option.Aws != nil {
+		service = &s3.Aws{
+			RepoName:        b.option.Aws.RepoName,
+			Endpoint:        b.option.Aws.Endpoint,
+			AccessKey:       b.option.Aws.AccessKey,
+			SecretAccessKey: b.option.Aws.SecretAccessKey,
+			Path:            b.option.Aws.Path,
+			LimitUploadRate: b.option.Aws.LimitUploadRate,
 			Password:        password,
 			BaseHandler:     &BaseHandler{},
+			Operator:        b.option.Operator,
 		}
-	} else if b.option.Cos != nil {
-		service = &cos.Cos{
-			RepoName:        b.option.Cos.RepoName,
-			Endpoint:        b.option.Cos.Endpoint,
-			AccessKey:       b.option.Cos.AccessKey,
-			SecretAccessKey: b.option.Cos.SecretAccessKey,
-			Path:            b.option.Cos.Path,
-			LimitUploadRate: b.option.Cos.LimitUploadRate,
+	} else if b.option.TencentCloud != nil {
+		service = &cos.TencentCloud{
+			RepoName:        b.option.TencentCloud.RepoName,
+			Endpoint:        b.option.TencentCloud.Endpoint,
+			AccessKey:       b.option.TencentCloud.AccessKey,
+			SecretAccessKey: b.option.TencentCloud.SecretAccessKey,
+			Path:            b.option.TencentCloud.Path,
+			LimitUploadRate: b.option.TencentCloud.LimitUploadRate,
 			Password:        password,
 			BaseHandler:     &BaseHandler{},
+			Operator:        b.option.Operator,
 		}
 	} else if b.option.Filesystem != nil {
 		service = &filesystem.Filesystem{
@@ -83,12 +100,11 @@ func (b *BackupService) Backup() {
 			Path:        b.option.Filesystem.Path,
 			Password:    password,
 			BaseHandler: &BaseHandler{},
+			Operator:    b.option.Operator,
 		}
 	} else {
 		logger.Fatalf("There is no suitable recovery method.")
 	}
 
-	if err := service.Backup(); err != nil {
-		logger.Errorf("Backup error: %v", err)
-	}
+	return service.Backup(b.option.Ctx)
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"strings"
 	"syscall"
 
 	"golang.org/x/term"
@@ -49,4 +50,12 @@ func InputPasswordWithConfirm(confirmRequired bool) (string, error) {
 	fmt.Printf("\n\n")
 
 	return string(confirmed), nil
+}
+
+func GetSuffix(c string, s string) (string, error) {
+	var r = strings.Split(c, s)
+	if len(r) != 2 {
+		return "", fmt.Errorf("get space sts prefix invalid, prefix: %s", c)
+	}
+	return r[1], nil
 }

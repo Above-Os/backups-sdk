@@ -1,10 +1,15 @@
 package restore
 
 import (
+	"context"
+
+	"bytetrade.io/web3os/backups-sdk/pkg/constants"
 	"bytetrade.io/web3os/backups-sdk/pkg/options"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage"
 	"github.com/spf13/cobra"
 )
+
+var p = func(percentDone float64) {}
 
 func NewCmdRestore() *cobra.Command {
 	rootBackupCmds := &cobra.Command{
@@ -27,8 +32,8 @@ func NewCmdSpace() *cobra.Command {
 		Use:   "space",
 		Short: "Restore data from Space",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Space: o})
-			restoreService.Restore()
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Ctx: context.TODO(), Space: o, Operator: constants.StorageOperatorCli})
+			restoreService.Restore(p)
 		},
 	}
 	o.AddFlags(cmd)
@@ -36,13 +41,13 @@ func NewCmdSpace() *cobra.Command {
 }
 
 func NewCmdS3() *cobra.Command {
-	o := options.NewRestoreS3Option()
+	o := options.NewRestoreAwsOption()
 	cmd := &cobra.Command{
 		Use:   "s3",
 		Short: "Restore data from Amazon S3 or S3-compatible storage",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = storage.NewRestoreService(&storage.RestoreOption{S3: o})
-			restoreService.Restore()
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Ctx: context.TODO(), Aws: o, Operator: constants.StorageOperatorCli})
+			restoreService.Restore(p)
 		},
 	}
 	o.AddFlags(cmd)
@@ -50,13 +55,13 @@ func NewCmdS3() *cobra.Command {
 }
 
 func NewCmdCos() *cobra.Command {
-	o := options.NewRestoreCosOption()
+	o := options.NewRestoreTencentCloudOption()
 	cmd := &cobra.Command{
 		Use:   "cos",
 		Short: "Restore data from Tencent Cloud Object Storage (COS)",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Cos: o})
-			restoreService.Restore()
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Ctx: context.TODO(), TencentCloud: o, Operator: constants.StorageOperatorCli})
+			restoreService.Restore(p)
 		},
 	}
 	o.AddFlags(cmd)
@@ -69,8 +74,8 @@ func NewCmdFs() *cobra.Command {
 		Use:   "fs",
 		Short: "Restore data from the local filesystem or disk",
 		Run: func(cmd *cobra.Command, args []string) {
-			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Filesystem: o})
-			restoreService.Restore()
+			var restoreService = storage.NewRestoreService(&storage.RestoreOption{Ctx: context.TODO(), Filesystem: o, Operator: constants.StorageOperatorCli})
+			restoreService.Restore(p)
 		},
 	}
 	o.AddFlags(cmd)

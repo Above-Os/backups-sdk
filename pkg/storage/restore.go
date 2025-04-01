@@ -1,47 +1,61 @@
 package storage
 
 import (
+	"context"
 	"strings"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/options"
+	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/cos"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/filesystem"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/s3"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/space"
 	"bytetrade.io/web3os/backups-sdk/pkg/utils"
+	"go.uber.org/zap"
 )
 
 type RestoreOption struct {
-	Space      *options.SpaceRestoreOption
-	S3         *options.S3RestoreOption
-	Cos        *options.CosRestoreOption
-	Filesystem *options.FilesystemRestoreOption
+	Password     string
+	Operator     string
+	Ctx          context.Context
+	Logger       *zap.SugaredLogger
+	Space        *options.SpaceRestoreOption
+	Aws          *options.AwsRestoreOption
+	TencentCloud *options.TencentCloudRestoreOption
+	Filesystem   *options.FilesystemRestoreOption
 }
 
 type RestoreService struct {
-	option *RestoreOption
+	password string
+	option   *RestoreOption
 }
 
 func NewRestoreService(option *RestoreOption) *RestoreService {
 	var restoreService = &RestoreService{
-		option: option,
+		password: option.Password,
+		option:   option,
 	}
 
 	return restoreService
 }
 
-func (r *RestoreService) Restore() {
-	password, err := utils.InputPasswordWithConfirm(false)
-	if err != nil {
-		panic(err)
+func (r *RestoreService) Restore(progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error) {
+	var password = r.password
+	if password == "" {
+		password, err = utils.InputPasswordWithConfirm(false)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	var service Location
 
 	if r.option.Space != nil {
 		service = &space.Space{
-			RepoName:          r.option.Space.RepoName,
+			RepoName: r.option.Space.RepoName,
+			// When restoring from BackupURL on a new machine, it is necessary to extract the Suffix from the Prefix of the backup in the BackupURL
+			RepoSuffix:        r.option.Space.RepoSuffix,
 			SnapshotId:        r.option.Space.SnapshotId,
 			Path:              r.option.Space.Path,
 			OlaresDid:         r.option.Space.OlaresDid,
@@ -53,30 +67,33 @@ func (r *RestoreService) Restore() {
 			Password:          password,
 			LimitDownloadRate: r.option.Space.LimitDownloadRate,
 			StsToken:          &space.StsToken{},
+			Operator:          r.option.Operator,
 		}
-	} else if r.option.S3 != nil {
-		service = &s3.S3{
-			RepoName:          r.option.S3.RepoName,
-			SnapshotId:        r.option.S3.SnapshotId,
-			Endpoint:          r.option.S3.Endpoint,
-			AccessKey:         r.option.S3.AccessKey,
-			SecretAccessKey:   r.option.S3.SecretAccessKey,
-			Path:              r.option.S3.Path,
-			LimitDownloadRate: r.option.S3.LimitDownloadRate,
+	} else if r.option.Aws != nil {
+		service = &s3.Aws{
+			RepoName:          r.option.Aws.RepoName,
+			SnapshotId:        r.option.Aws.SnapshotId,
+			Endpoint:          r.option.Aws.Endpoint,
+			AccessKey:         r.option.Aws.AccessKey,
+			SecretAccessKey:   r.option.Aws.SecretAccessKey,
+			Path:              r.option.Aws.Path,
+			LimitDownloadRate: r.option.Aws.LimitDownloadRate,
 			Password:          password,
 			BaseHandler:       &BaseHandler{},
+			Operator:          r.option.Operator,
 		}
-	} else if r.option.Cos != nil {
-		service = &cos.Cos{
-			RepoName:          r.option.Cos.RepoName,
-			SnapshotId:        r.option.Cos.SnapshotId,
-			Endpoint:          r.option.Cos.Endpoint,
-			AccessKey:         r.option.Cos.AccessKey,
-			SecretAccessKey:   r.option.Cos.SecretAccessKey,
-			Path:              r.option.Cos.Path,
-			LimitDownloadRate: r.option.S3.LimitDownloadRate,
+	} else if r.option.TencentCloud != nil {
+		service = &cos.TencentCloud{
+			RepoName:          r.option.TencentCloud.RepoName,
+			SnapshotId:        r.option.TencentCloud.SnapshotId,
+			Endpoint:          r.option.TencentCloud.Endpoint,
+			AccessKey:         r.option.TencentCloud.AccessKey,
+			SecretAccessKey:   r.option.TencentCloud.SecretAccessKey,
+			Path:              r.option.TencentCloud.Path,
+			LimitDownloadRate: r.option.TencentCloud.LimitDownloadRate,
 			Password:          password,
 			BaseHandler:       &BaseHandler{},
+			Operator:          r.option.Operator,
 		}
 
 	} else if r.option.Filesystem != nil {
@@ -87,12 +104,11 @@ func (r *RestoreService) Restore() {
 			Path:        r.option.Filesystem.Path,
 			Password:    password,
 			BaseHandler: &BaseHandler{},
+			Operator:    r.option.Operator,
 		}
 	} else {
 		logger.Fatalf("There is no suitable recovery method.")
 	}
 
-	if err := service.Restore(); err != nil {
-		logger.Errorf("Restore error: %v", err)
-	}
+	return service.Restore(r.option.Ctx, progressCallback)
 }

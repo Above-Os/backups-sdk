@@ -1,8 +1,12 @@
 package region
 
 import (
+	"fmt"
+	"os"
+
 	"bytetrade.io/web3os/backups-sdk/pkg/options"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage"
+	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +29,12 @@ func newSpaceRegions() *cobra.Command {
 		Short: "Space Storage Regions",
 		Run: func(cmd *cobra.Command, args []string) {
 			var regionService = storage.NewRegionService(&storage.RegionOption{Space: o})
-			regionService.Regions()
+			data, err := regionService.Regions()
+			if err != nil {
+				panic(fmt.Errorf("Get space regions error: %v\n", err))
+			}
+			fmt.Println(utils.ToJSON(data))
+			os.Exit(0)
 		},
 	}
 	o.AddFlags(cmd)

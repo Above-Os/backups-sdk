@@ -36,6 +36,8 @@ const (
 	ERROR_MESSAGE_CONFIG_FILE_ALREADY_EXISTS     RESTIC_ERROR_MESSAGE = "config file already exists"
 	ERROR_MESSAGE_WRONG_PASSWORD_OR_NO_KEY_FOUND RESTIC_ERROR_MESSAGE = "wrong password or no key found"
 	ERROR_MESSAGE_REPOSITORY_DOES_NOT_EXIST      RESTIC_ERROR_MESSAGE = "repository does not exist: unable to open config file"
+	ERROR_MESSAGE_BACKUP_CANCELED                RESTIC_ERROR_MESSAGE = "backup canceled"
+	ERROR_MESSAGE_RESTORE_CANCELED               RESTIC_ERROR_MESSAGE = "restore canceled"
 )
 
 const (
@@ -68,6 +70,7 @@ const (
 
 type ResticOptions struct {
 	RepoName          string
+	RepoSuffix        string
 	CloudName         string
 	RegionId          string
 	SnapshotId        string
@@ -131,7 +134,7 @@ func NewRestic(ctx context.Context, opt *ResticOptions) (*Restic, error) {
 func (r *Restic) Init() (string, error) {
 	r.addCommand([]string{"init", "-v=3", PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS}).addExtended()
 
-	cmd := exec.CommandContext(context.Background(), r.dir, r.args...)
+	cmd := exec.CommandContext(r.ctx, r.dir, r.args...)
 	cmd.Env = append(cmd.Env, r.opt.RepoEnvs.Slice()...)
 
 	var outerr string
@@ -170,9 +173,6 @@ func (r *Restic) Tag(snapshotId string, tags []string) error {
 }
 
 func (r *Restic) Backup(folder string, filePathPrefix string, tags []string) (*SummaryOutput, error) {
-	var backupCtx, cancel = context.WithCancel(r.ctx)
-	defer cancel()
-
 	r.addCommand([]string{"backup", folder, r.opt.SetLimitUploadRate(), PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS}).
 		addExtended().
 		addRequestTimeout().
@@ -184,7 +184,7 @@ func (r *Restic) Backup(folder string, filePathPrefix string, tags []string) (*S
 		Envs: r.opt.RepoEnvs.Kv(),
 	}
 
-	c := utils.NewCommand(backupCtx, opts)
+	c := utils.NewCommand(r.ctx, opts)
 
 	var prevPercent float64
 	var finished bool
@@ -194,6 +194,10 @@ func (r *Restic) Backup(folder string, filePathPrefix string, tags []string) (*S
 	go func() {
 		for {
 			select {
+			case <-r.ctx.Done():
+				logger.Infof("[restic] backup canceled")
+				errorMsg = ERROR_MESSAGE_BACKUP_CANCELED
+				return
 			case res, ok := <-c.Ch:
 				if !ok {
 					return
@@ -256,8 +260,6 @@ func (r *Restic) Backup(folder string, filePathPrefix string, tags []string) (*S
 					return
 				}
 				messagePool.Put(status)
-			case <-r.ctx.Done():
-				return
 			}
 		}
 	}()
@@ -374,7 +376,7 @@ func (r *Restic) Unlock() (string, error) {
 }
 
 func (r *Restic) GetSnapshot(snapshotId string) (*Snapshot, error) {
-	var restoreCtx, cancel = context.WithCancel(r.ctx)
+	var getCtx, cancel = context.WithCancel(r.ctx)
 	defer cancel()
 
 	r.addCommand([]string{"snapshots", PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS, snapshotId}).addExtended().addRequestTimeout()
@@ -385,7 +387,7 @@ func (r *Restic) GetSnapshot(snapshotId string) (*Snapshot, error) {
 		Envs: r.opt.RepoEnvs.Kv(),
 	}
 
-	c := utils.NewCommand(restoreCtx, opts)
+	c := utils.NewCommand(getCtx, opts)
 
 	var summary []*Snapshot
 	var errorMsg RESTIC_ERROR_MESSAGE
@@ -519,18 +521,18 @@ func (r *Restic) GetSnapshots(tags []string) (*SnapshotList, error) {
 	return summary, nil
 }
 
-func (r *Restic) Restore(snapshotId string, uploadPath string, target string) (*RestoreSummaryOutput, error) {
+func (r *Restic) Restore(snapshotId string, uploadPath string, target string, progressCallback func(percentDone float64)) (*RestoreSummaryOutput, error) {
 	r.addCommand([]string{"restore", r.opt.SetLimitDownloadRate(), "-t", target, "-v=3", PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS, fmt.Sprintf("%s:%s", snapshotId, uploadPath)}).addExtended().addRequestTimeout()
 
-	var restoreCtx, cancel = context.WithCancel(r.ctx)
-	defer cancel()
+	// var restoreCtx, cancel = context.WithCancel(r.ctx)
+	// defer cancel()
 	opts := utils.CommandOptions{
 		Path: r.dir,
 		Args: r.args,
 		Envs: r.opt.RepoEnvs.Kv(),
 	}
 
-	c := utils.NewCommand(restoreCtx, opts)
+	c := utils.NewCommand(r.ctx, opts)
 
 	var prevPercent float64
 	var started bool
@@ -541,6 +543,10 @@ func (r *Restic) Restore(snapshotId string, uploadPath string, target string) (*
 	go func() {
 		for {
 			select {
+			case <-r.ctx.Done():
+				logger.Infof("[restic] restore canceled")
+				errorMsg = ERROR_MESSAGE_RESTORE_CANCELED
+				return
 			case res, ok := <-c.Ch:
 				if !ok {
 					return
@@ -578,11 +584,13 @@ func (r *Restic) Restore(snapshotId string, uploadPath string, target string) (*
 						if !started {
 							logger.Infof(PRINT_RESTORE_START_MESSAGE, status.TotalFiles, utils.FormatBytes(status.TotalBytes))
 							started = true
+							progressCallback(status.PercentDone)
 						}
 					case math.Abs(status.PercentDone-1.0) < tolerance:
 						if !finished {
 							logger.Infof(PRINT_RESTORE_FINISH_MESSAGE, snapshotId, status.TotalFiles, status.FilesRestored, utils.FormatBytes(status.TotalBytes), utils.FormatBytes(status.BytesRestored))
 							finished = true
+							progressCallback(status.PercentDone)
 						}
 					default:
 						if prevPercent != status.PercentDone {
@@ -593,6 +601,7 @@ func (r *Restic) Restore(snapshotId string, uploadPath string, target string) (*
 								utils.FormatBytes(status.BytesRestored),
 								utils.FormatBytes(status.TotalBytes),
 							)
+							progressCallback(status.PercentDone)
 						}
 						prevPercent = status.PercentDone
 					}
@@ -613,14 +622,15 @@ func (r *Restic) Restore(snapshotId string, uploadPath string, target string) (*
 						return
 					}
 					restoreMessagePool.Put(status)
+					progressCallback(1.0)
 					return
 				}
 				restoreMessagePool.Put(status)
-			case <-r.ctx.Done():
-				return
+
 			}
 		}
 	}()
+
 	_, err := c.Run()
 	if err != nil {
 		return nil, err

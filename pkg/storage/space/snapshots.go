@@ -9,14 +9,17 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Space) Snapshots() error {
-	var repoName = s.RepoName
-
-	if err := s.getStsToken(); err != nil {
+func (s *Space) Snapshots(ctx context.Context) error {
+	if err := s.getStsToken(ctx); err != nil {
 		return errors.WithStack(err)
 	}
 
-	var envs = s.GetEnv(repoName)
+	storageInfo, err := s.FormatRepository()
+	if err != nil {
+		return err
+	}
+
+	var envs = s.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
 		RepoName:        s.RepoName,
 		RepoEnvs:        envs,

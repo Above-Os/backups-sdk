@@ -1,7 +1,9 @@
 package storage
 
 import (
+	"context"
 	"strings"
+	"time"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/options"
@@ -13,11 +15,11 @@ import (
 )
 
 type SnapshotsOption struct {
-	Basedir    string
-	Space      *options.SpaceSnapshotsOption
-	S3         *options.S3SnapshotsOption
-	Cos        *options.CosSnapshotsOption
-	Filesystem *options.FilesystemSnapshotsOption
+	Basedir      string
+	Space        *options.SpaceSnapshotsOption
+	Aws          *options.AwsSnapshotsOption
+	TencentCloud *options.TencentCloudSnapshotsOption
+	Filesystem   *options.FilesystemSnapshotsOption
 }
 
 type SnapshotsService struct {
@@ -52,21 +54,21 @@ func (s *SnapshotsService) Snapshots() {
 			Password:       password,
 			StsToken:       &space.StsToken{},
 		}
-	} else if s.option.S3 != nil {
-		service = &s3.S3{
-			RepoName:        s.option.S3.RepoName,
-			Endpoint:        s.option.S3.Endpoint,
-			AccessKey:       s.option.S3.AccessKey,
-			SecretAccessKey: s.option.S3.SecretAccessKey,
+	} else if s.option.Aws != nil {
+		service = &s3.Aws{
+			RepoName:        s.option.Aws.RepoName,
+			Endpoint:        s.option.Aws.Endpoint,
+			AccessKey:       s.option.Aws.AccessKey,
+			SecretAccessKey: s.option.Aws.SecretAccessKey,
 			Password:        password,
 			BaseHandler:     &BaseHandler{},
 		}
-	} else if s.option.Cos != nil {
-		service = &cos.Cos{
-			RepoName:        s.option.Cos.RepoName,
-			Endpoint:        s.option.Cos.Endpoint,
-			AccessKey:       s.option.Cos.AccessKey,
-			SecretAccessKey: s.option.Cos.SecretAccessKey,
+	} else if s.option.TencentCloud != nil {
+		service = &cos.TencentCloud{
+			RepoName:        s.option.TencentCloud.RepoName,
+			Endpoint:        s.option.TencentCloud.Endpoint,
+			AccessKey:       s.option.TencentCloud.AccessKey,
+			SecretAccessKey: s.option.TencentCloud.SecretAccessKey,
 			Password:        password,
 			BaseHandler:     &BaseHandler{},
 		}
@@ -82,7 +84,10 @@ func (s *SnapshotsService) Snapshots() {
 		return
 	}
 
-	if err := service.Snapshots(); err != nil {
+	var ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := service.Snapshots(ctx); err != nil {
 		logger.Errorf("List Spanshots error: %v", err)
 	}
 }

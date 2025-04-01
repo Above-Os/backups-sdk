@@ -1,6 +1,7 @@
 package space
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -50,14 +51,14 @@ type StsToken struct {
 	ClusterId    string `json:"cluster_id"`
 }
 
-func (s *StsToken) RefreshStsToken(cloudApiMirror string) error {
+func (s *StsToken) RefreshStsToken(ctx context.Context, cloudApiMirror string) error {
 	logger.Infof("refresh sts token")
 
 	var url = s.getRequestSpaceRefreshStsUrl(cloudApiMirror)
 	var headers = s.getRequestSpaceStsHeaders()
 	var data = s.getRequestSpaceRefreshStsData()
 
-	result, err := utils.Post[CloudStorageAccountResponse](url, headers, data)
+	result, err := utils.Post[CloudStorageAccountResponse](ctx, url, headers, data)
 	if err != nil {
 		return err
 	}
@@ -80,8 +81,8 @@ func (s *StsToken) RefreshStsToken(cloudApiMirror string) error {
 	return nil
 }
 
-func (s *StsToken) GetStsToken(olaresDid, accessToken,
-	cloudName, regionId, clusterId,
+func (s *StsToken) GetStsToken(ctx context.Context, olaresDid, accessToken,
+	cloudName, regionId, clusterId, prevOlaresDidPrefixSuffix,
 	cloudApiMirror string) error {
 	logger.Info("get sts token")
 
@@ -89,9 +90,9 @@ func (s *StsToken) GetStsToken(olaresDid, accessToken,
 
 	var url = s.getRequestSpaceStsUrl(cloudApiMirror)
 	var headers = s.getRequestSpaceStsHeaders()
-	var data = s.getRequestSpaceStsData(olaresDid, accessToken, cloudName, regionId, clusterId)
+	var data = s.getRequestSpaceStsData(olaresDid, accessToken, cloudName, regionId, clusterId, prevOlaresDidPrefixSuffix)
 
-	result, err := utils.Post[CloudStorageAccountResponse](url, headers, data)
+	result, err := utils.Post[CloudStorageAccountResponse](ctx, url, headers, data)
 	if err != nil {
 		return err
 	}
@@ -99,7 +100,7 @@ func (s *StsToken) GetStsToken(olaresDid, accessToken,
 	queryResp := result
 
 	if queryResp.Code == 506 {
-		return fmt.Errorf("user access token expired")
+		return fmt.Errorf("response code %d", queryResp.Code)
 	}
 
 	if queryResp.Data == nil {
@@ -142,9 +143,9 @@ func (s *StsToken) getRequestSpaceStsHeaders() map[string]string {
 	return headers
 }
 
-func (s *StsToken) getRequestSpaceStsData(olaresDid, token, location, region, clusterId string) string {
-	var data = fmt.Sprintf("cloudName=%s&durationSeconds=%s&region=%s&token=%s&userid=%s&clusterId=%s",
-		location, fmt.Sprintf("%.0f", s.parseSpaceStsDuration().Seconds()), region, token, olaresDid, s.parseClusterId(clusterId))
+func (s *StsToken) getRequestSpaceStsData(olaresDid, token, location, region, clusterId, prevOlaresDidPrefixSuffix string) string {
+	var data = fmt.Sprintf("cloudName=%s&durationSeconds=%s&region=%s&token=%s&userid=%s&clusterId=%s&backupPrefix=%s",
+		location, fmt.Sprintf("%.0f", s.parseSpaceStsDuration().Seconds()), region, token, olaresDid, s.parseClusterId(clusterId), prevOlaresDidPrefixSuffix)
 	return data
 }
 

@@ -9,6 +9,7 @@ var _ Option = &SpaceRestoreOption{}
 
 type SpaceRestoreOption struct {
 	RepoName          string
+	RepoSuffix        string
 	SnapshotId        string
 	Path              string
 	LimitDownloadRate string
@@ -26,6 +27,7 @@ func NewRestoreSpaceOption() *SpaceRestoreOption {
 
 func (o *SpaceRestoreOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
+	cmd.Flags().StringVarP(&o.RepoSuffix, "repo-suffix", "", "", "Backup repo suffix")
 	cmd.Flags().StringVarP(&o.SnapshotId, "snapshot-id", "", "", "Snapshot ID")
 	cmd.Flags().StringVarP(&o.Path, "path", "", "", "The directory to be restore")
 	cmd.Flags().StringVarP(&o.LimitDownloadRate, "limit-download-rate", "", "", "Limits downloads to a maximum rate in KiB/s. (default: unlimited)")
@@ -38,9 +40,9 @@ func (o *SpaceRestoreOption) AddFlags(cmd *cobra.Command) {
 }
 
 // ~ s3
-var _ Option = &S3RestoreOption{}
+var _ Option = &AwsRestoreOption{}
 
-type S3RestoreOption struct {
+type AwsRestoreOption struct {
 	RepoName          string
 	SnapshotId        string
 	Endpoint          string
@@ -50,11 +52,11 @@ type S3RestoreOption struct {
 	LimitDownloadRate string
 }
 
-func NewRestoreS3Option() *S3RestoreOption {
-	return &S3RestoreOption{}
+func NewRestoreAwsOption() *AwsRestoreOption {
+	return &AwsRestoreOption{}
 }
 
-func (o *S3RestoreOption) AddFlags(cmd *cobra.Command) {
+func (o *AwsRestoreOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 	cmd.Flags().StringVarP(&o.SnapshotId, "snapshot-id", "", "", "Snapshot ID")
 	cmd.Flags().StringVarP(&o.Endpoint, "endpoint", "", "", "Endpoint for S3, for example https://{bucket}.{region}.amazonaws.com/{prefix}")
@@ -65,9 +67,9 @@ func (o *S3RestoreOption) AddFlags(cmd *cobra.Command) {
 }
 
 // ~ cos
-var _ Option = &CosRestoreOption{}
+var _ Option = &TencentCloudRestoreOption{}
 
-type CosRestoreOption struct {
+type TencentCloudRestoreOption struct {
 	RepoName          string
 	SnapshotId        string
 	Endpoint          string
@@ -77,11 +79,11 @@ type CosRestoreOption struct {
 	LimitDownloadRate string
 }
 
-func NewRestoreCosOption() *CosRestoreOption {
-	return &CosRestoreOption{}
+func NewRestoreTencentCloudOption() *TencentCloudRestoreOption {
+	return &TencentCloudRestoreOption{}
 }
 
-func (o *CosRestoreOption) AddFlags(cmd *cobra.Command) {
+func (o *TencentCloudRestoreOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 	cmd.Flags().StringVarP(&o.SnapshotId, "snapshot-id", "", "", "Snapshot ID")
 	cmd.Flags().StringVarP(&o.Endpoint, "endpoint", "", "", "Endpoint for Tencent COS, for example https://cos.{region}.myqcloud.com/{bucket}/{prefix}")

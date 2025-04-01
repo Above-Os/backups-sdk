@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -9,7 +10,7 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-func Post[T any](url string, headers map[string]string, data interface{}) (*T, error) {
+func Post[T any](ctx context.Context, url string, headers map[string]string, data interface{}) (*T, error) {
 	var result T
 	client := resty.New().SetTimeout(10 * time.Second).
 		SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}).R().SetDebug(true)
@@ -18,7 +19,7 @@ func Post[T any](url string, headers map[string]string, data interface{}) (*T, e
 		client.SetHeaders(headers)
 	}
 
-	resp, err := client.
+	resp, err := client.SetContext(ctx).
 		SetBody(data).
 		SetResult(&result).
 		Post(url)

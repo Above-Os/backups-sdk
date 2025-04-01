@@ -10,6 +10,7 @@ import (
 	"bytetrade.io/web3os/backups-sdk/cmd/snapshots"
 	"bytetrade.io/web3os/backups-sdk/pkg/constants"
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage"
 	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 	"github.com/spf13/cobra"
 )
@@ -36,4 +37,22 @@ func NewBackupCommands() *cobra.Command {
 	cmds.AddCommand(region.NewCmdRegions())
 
 	return cmds
+}
+
+func NewBackupService(option *storage.BackupOption) *storage.BackupService {
+	logger.SetLogger(option.Logger)
+
+	return storage.NewBackupService(option)
+}
+
+func NewRestoreService(option *storage.RestoreOption) *storage.RestoreService {
+	logger.SetLogger(option.Logger)
+
+	return storage.NewRestoreService(option)
+}
+
+func NewRegionService(option *storage.RegionOption) *storage.RegionService {
+	logger.SetLogger(option.Logger)
+
+	return storage.NewRegionService(option)
 }

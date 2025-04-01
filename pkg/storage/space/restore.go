@@ -10,18 +10,21 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Space) Restore() (err error) {
-	ctx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
+func (s *Space) Restore(ctx context.Context, progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error) {
+	// ctx, cancel := context.WithCancel(context.TODO())
+	// defer cancel()
 
-	if err = s.getStsToken(); err != nil {
-		return errors.WithStack(err)
+	if err = s.getStsToken(ctx); err != nil {
+		return
 	}
 
-	var restoreResult *restic.RestoreSummaryOutput
+	storageInfo, err := s.FormatRepository()
+	if err != nil {
+		return
+	}
 
 	for {
-		var envs = s.GetEnv(s.RepoName)
+		var envs = s.GetEnv(storageInfo.Url)
 		var opts = &restic.ResticOptions{
 			RepoName:          s.RepoName,
 			CloudName:         s.CloudName,
@@ -47,24 +50,22 @@ func (s *Space) Restore() (err error) {
 		var backupPath = currentSnapshot.Paths[0]
 		logger.Infof("space restore spanshot %s detail: %s", s.SnapshotId, utils.ToJSON(currentSnapshot))
 
-		restoreResult, err = r.Restore(s.SnapshotId, backupPath, s.Path)
+		restoreSummary, err = r.Restore(s.SnapshotId, backupPath, s.Path, progressCallback)
 		if err != nil {
 			switch err.Error() {
 			case restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error():
 				logger.Infof("space restore download stopped, sts token expired, refresh and retring...")
-				if err = s.refreshStsTokens(); err != nil {
+				if err = s.refreshStsTokens(ctx); err != nil {
 					err = fmt.Errorf("space restore download sts token service refresh-token error: %v", err)
 					return
 				}
 				continue
 			default:
-				return errors.WithStack(err)
+				return nil, errors.WithStack(err)
 			}
 		}
 
-		if restoreResult != nil {
-			logger.Infof("restore space successful, data: %s", utils.ToJSON(restoreResult))
-		}
+		logger.Infof("Restore successful, name: %s, result: %s", s.RepoName, utils.ToJSON(restoreSummary))
 
 		break
 	}
