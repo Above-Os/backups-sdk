@@ -50,6 +50,7 @@ func (s *S3) Restore() error {
 	var opts = &restic.ResticOptions{
 		RepoName:          s.RepoName,
 		RepoEnvs:          envs,
+		Path:              s.Path,
 		LimitDownloadRate: s.LimitDownloadRate,
 	}
 

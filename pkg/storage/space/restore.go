@@ -26,6 +26,7 @@ func (s *Space) Restore() (err error) {
 			RepoName:          s.RepoName,
 			CloudName:         s.CloudName,
 			RegionId:          s.RegionId,
+			Path:              s.Path,
 			RepoEnvs:          envs,
 			LimitDownloadRate: s.LimitDownloadRate,
 		}

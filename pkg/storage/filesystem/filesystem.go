@@ -42,6 +42,7 @@ func (f *Filesystem) Restore() error {
 	var opts = &restic.ResticOptions{
 		RepoName: f.RepoName,
 		RepoEnvs: envs,
+		Path:     f.Path,
 	}
 
 	f.BaseHandler.SetOptions(opts)

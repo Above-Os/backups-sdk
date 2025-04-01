@@ -53,6 +53,7 @@ func (c *Cos) Restore() error {
 	var opts = &restic.ResticOptions{
 		RepoName:          c.RepoName,
 		RepoEnvs:          envs,
+		Path:              c.Path,
 		LimitDownloadRate: c.LimitDownloadRate,
 	}
 
