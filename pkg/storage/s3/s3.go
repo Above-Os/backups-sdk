@@ -79,6 +79,22 @@ func (s *Aws) Snapshots(ctx context.Context) error {
 	return s.BaseHandler.Snapshots(ctx)
 }
 
+func (s *Aws) Stats(ctx context.Context) (*restic.StatsContainer, error) {
+	storageInfo, err := s.FormatRepository()
+	if err != nil {
+		return nil, err
+	}
+
+	var envs = s.GetEnv(storageInfo.Url)
+	var opts = &restic.ResticOptions{
+		RepoName: s.RepoName,
+		RepoEnvs: envs,
+	}
+
+	s.BaseHandler.SetOptions(opts)
+	return s.BaseHandler.Stats(ctx)
+}
+
 func (s *Aws) Regions() ([]map[string]string, error) {
 	return nil, nil
 }
@@ -129,7 +145,7 @@ func (s *Aws) FormatRepository() (storageInfo *model.StorageInfo, err error) {
 	var bucket = repoBaseSplit[0]
 	var region = repoBaseSplit[1]
 
-	var repository = fmt.Sprintf("s3:s3.%s.%s/%s/%s%s", region, domainName, bucket, repoPrefix, s.RepoName)
+	var repository = fmt.Sprintf("s3:https://s3.%s.%s/%s/%s%s", region, domainName, bucket, repoPrefix, s.RepoName)
 
 	storageInfo = &model.StorageInfo{
 		Location:  "awss3",

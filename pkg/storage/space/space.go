@@ -3,11 +3,11 @@ package space
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/constants"
+	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/model"
 	"bytetrade.io/web3os/backups-sdk/pkg/utils"
@@ -84,6 +84,36 @@ func (s *Space) Regions() ([]map[string]string, error) {
 	return regions, nil
 }
 
+func (s *Space) Stats(ctx context.Context) (*restic.StatsContainer, error) {
+	if err := s.getStsToken(ctx); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	storageInfo, err := s.FormatRepository()
+	if err != nil {
+		return nil, err
+	}
+
+	var envs = s.GetEnv(storageInfo.Url)
+	var opts = &restic.ResticOptions{
+		RepoName:        s.RepoName,
+		RepoEnvs:        envs,
+		LimitUploadRate: s.LimitUploadRate,
+	}
+	logger.Debugf("space stats env vars: %s", utils.Base64encode([]byte(envs.String())))
+
+	r, err := restic.NewRestic(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	stats, err := r.Stats()
+	if err != nil {
+		return nil, err
+	}
+	return stats, nil
+}
+
 func (s *Space) GetEnv(repository string) *restic.ResticEnvs {
 	var envs = &restic.ResticEnvs{
 		AWS_ACCESS_KEY_ID:     s.StsToken.AccessKey,
@@ -97,7 +127,7 @@ func (s *Space) GetEnv(repository string) *restic.ResticEnvs {
 }
 
 func (s *Space) getCosRepository() (storageInfo *model.StorageInfo, err error) {
-	var repoPrefix = filepath.Join(s.StsToken.Prefix, "restic", s.RepoName)
+	var repoPrefix = fmt.Sprintf("%s/%s/%s", s.StsToken.Prefix, "restic", s.RepoName)
 	var repository = fmt.Sprintf("s3:https://cos.%s.%s/%s/%s", s.RegionId, constants.StorageTencentDoman, s.StsToken.Bucket, repoPrefix)
 
 	storageInfo = &model.StorageInfo{
@@ -113,10 +143,9 @@ func (s *Space) getCosRepository() (storageInfo *model.StorageInfo, err error) {
 }
 
 func (s *Space) getDefaultRepository() (storageInfo *model.StorageInfo, err error) {
-	var repoPrefix = filepath.Join(s.StsToken.Prefix, "restic", s.RepoName)
-	var domain = fmt.Sprintf("s3.%s.%s", s.StsToken.Region, constants.StorageS3Domain)
-	var repo = filepath.Join(domain, s.StsToken.Bucket, repoPrefix)
-	var repository = fmt.Sprintf("s3:%s", repo)
+	var repoPrefix = fmt.Sprintf("%s/%s/%s", s.StsToken.Prefix, "restic", s.RepoName)
+	var domain = fmt.Sprintf("%s.%s", s.StsToken.Region, constants.StorageS3Domain)
+	var repository = fmt.Sprintf("s3:https://s3.%s/%s/%s", domain, s.StsToken.Bucket, repoPrefix)
 
 	storageInfo = &model.StorageInfo{
 		Location:  "space",

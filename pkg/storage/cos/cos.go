@@ -83,6 +83,22 @@ func (c *TencentCloud) Snapshots(ctx context.Context) error {
 	return c.BaseHandler.Snapshots(ctx)
 }
 
+func (c *TencentCloud) Stats(ctx context.Context) (*restic.StatsContainer, error) {
+	storageInfo, err := c.FormatRepository()
+	if err != nil {
+		return nil, err
+	}
+
+	var envs = c.GetEnv(storageInfo.Url)
+	var opts = &restic.ResticOptions{
+		RepoName: c.RepoName,
+		RepoEnvs: envs,
+	}
+
+	c.BaseHandler.SetOptions(opts)
+	return c.BaseHandler.Stats(ctx)
+}
+
 func (c *TencentCloud) Regions() ([]map[string]string, error) {
 	return nil, nil
 }
