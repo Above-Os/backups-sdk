@@ -70,6 +70,22 @@ func (f *Filesystem) Snapshots(ctx context.Context) error {
 	return f.BaseHandler.Snapshots(ctx)
 }
 
+func (f *Filesystem) Stats(ctx context.Context) (*restic.StatsContainer, error) {
+	storageInfo, err := f.FormatRepository()
+	if err != nil {
+		return nil, err
+	}
+
+	var envs = f.GetEnv(storageInfo.Url)
+	var opts = &restic.ResticOptions{
+		RepoName: f.RepoName,
+		RepoEnvs: envs,
+	}
+
+	f.BaseHandler.SetOptions(opts)
+	return f.BaseHandler.Stats(ctx)
+}
+
 func (f *Filesystem) Regions() ([]map[string]string, error) {
 	return nil, nil
 }

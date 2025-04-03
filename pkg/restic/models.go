@@ -90,6 +90,13 @@ type VerboseUpdate struct {
 	TotalFiles         uint    `json:"total_files"`
 }
 
+type StatsContainer struct {
+	TotalSize      uint64 `json:"total_size"`
+	TotalFileCount uint64 `json:"total_file_count,omitempty"`
+	TotalBlobCount uint64 `json:"total_blob_count,omitempty"`
+	SnapshotsCount int    `json:"snapshots_count"`
+}
+
 type SummaryOutput struct {
 	MessageType         string  `json:"message_type"` // "summary"
 	FilesNew            uint    `json:"files_new"`

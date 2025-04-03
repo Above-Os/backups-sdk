@@ -16,6 +16,7 @@ type Location interface {
 	Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error)
 	Restore(ctx context.Context, progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error)
 	Snapshots(ctx context.Context) error
+	Stats(ctx context.Context) (*restic.StatsContainer, error)
 	Regions() ([]map[string]string, error)
 
 	GetEnv(repository string) *restic.ResticEnvs
@@ -159,4 +160,19 @@ func (h *BaseHandler) Snapshots(ctx context.Context) error {
 	snapshots.PrintTable()
 
 	return nil
+}
+
+func (h *BaseHandler) Stats(ctx context.Context) (*restic.StatsContainer, error) {
+	logger.Debugf("stats env vars: %s", utils.Base64encode([]byte(h.opts.RepoEnvs.String())))
+
+	r, err := restic.NewRestic(ctx, h.opts)
+	if err != nil {
+		return nil, err
+	}
+
+	stats, err := r.Stats()
+	if err != nil {
+		return nil, err
+	}
+	return stats, nil
 }
