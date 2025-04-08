@@ -28,7 +28,7 @@ type TencentCloud struct {
 	Operator          string
 }
 
-func (c *TencentCloud) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
+func (c *TencentCloud) Backup(ctx context.Context, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
 	storageInfo, err = c.FormatRepository()
 	if err != nil {
 		return
@@ -45,7 +45,7 @@ func (c *TencentCloud) Backup(ctx context.Context) (backupSummary *restic.Summar
 
 	c.BaseHandler.SetOptions(opts)
 
-	backupSummary, err = c.BaseHandler.Backup(ctx)
+	backupSummary, err = c.BaseHandler.Backup(ctx, progressCallback)
 	return backupSummary, storageInfo, err
 }
 

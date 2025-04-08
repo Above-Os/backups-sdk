@@ -13,7 +13,7 @@ import (
 )
 
 type Location interface {
-	Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error)
+	Backup(ctx context.Context, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error)
 	Restore(ctx context.Context, progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error)
 	Snapshots(ctx context.Context) error
 	Stats(ctx context.Context) (*restic.StatsContainer, error)
@@ -34,7 +34,7 @@ func (d *BaseHandler) SetOptions(opts *restic.ResticOptions) {
 	d.opts = opts
 }
 
-func (d *BaseHandler) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, err error) {
+func (d *BaseHandler) Backup(ctx context.Context, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, err error) {
 	var repoName = d.opts.RepoName
 	var path = d.opts.Path
 
@@ -82,7 +82,7 @@ func (d *BaseHandler) Backup(ctx context.Context) (backupSummary *restic.Summary
 		fmt.Sprintf("repo-name=%s", repoName),
 	}
 
-	backupSummary, err = r.Backup(path, "", tags)
+	backupSummary, err = r.Backup(path, "", tags, progressCallback)
 	if err != nil {
 		err = errors.WithStack(err)
 		return

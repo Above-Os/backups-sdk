@@ -26,7 +26,7 @@ type Aws struct {
 	Operator          string
 }
 
-func (s *Aws) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
+func (s *Aws) Backup(ctx context.Context, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
 	storageInfo, err = s.FormatRepository()
 	if err != nil {
 		return
@@ -42,7 +42,7 @@ func (s *Aws) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, 
 
 	s.BaseHandler.SetOptions(opts)
 
-	backupSummary, err = s.BaseHandler.Backup(ctx)
+	backupSummary, err = s.BaseHandler.Backup(ctx, progressCallback)
 	return backupSummary, storageInfo, err
 }
 

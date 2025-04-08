@@ -228,7 +228,7 @@ func (r *Restic) Tag(snapshotId string, tags []string) error {
 	return nil
 }
 
-func (r *Restic) Backup(folder string, filePathPrefix string, tags []string) (*SummaryOutput, error) {
+func (r *Restic) Backup(folder string, filePathPrefix string, tags []string, progressCallback func(percentDone float64)) (*SummaryOutput, error) {
 	r.addCommand([]string{"backup", folder, r.opt.SetLimitUploadRate(), PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS}).
 		addExtended().
 		addRequestTimeout().
@@ -287,10 +287,12 @@ func (r *Restic) Backup(folder string, filePathPrefix string, tags []string) (*S
 					switch {
 					case math.Abs(status.PercentDone-0.0) < tolerance:
 						logger.Infof(PRINT_START_MESSAGE, status.TotalFiles, utils.FormatBytes(status.TotalBytes))
+						progressCallback(status.PercentDone)
 					case math.Abs(status.PercentDone-1.0) < tolerance:
 						if !finished {
 							logger.Infof(PRINT_FINISH_MESSAGE, status.TotalFiles, utils.FormatBytes(status.TotalBytes))
 							finished = true
+							progressCallback(status.PercentDone)
 						}
 					default:
 						if prevPercent != status.PercentDone {
@@ -301,6 +303,7 @@ func (r *Restic) Backup(folder string, filePathPrefix string, tags []string) (*S
 								utils.FormatBytes(status.BytesDone),
 								utils.FormatBytes(status.TotalBytes),
 								r.fileNameTidy(status.CurrentFiles, filePathPrefix))
+							progressCallback(status.PercentDone)
 						}
 						prevPercent = status.PercentDone
 					}
