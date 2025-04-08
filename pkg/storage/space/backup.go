@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Space) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
+func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
 	if err = s.getStsToken(ctx); err != nil {
 		return
 	}
@@ -84,7 +84,7 @@ func (s *Space) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput
 			fmt.Sprintf("repo-suffix=%s", repoSuffix),
 		}
 
-		backupSummary, err = r.Backup(s.Path, "", tags)
+		backupSummary, err = r.Backup(s.Path, "", tags, progressCallback)
 		if err != nil {
 			switch err.Error() {
 			case restic.ERROR_MESSAGE_BACKUP_CANCELED.Error():

@@ -21,7 +21,7 @@ type Filesystem struct {
 	Operator    string
 }
 
-func (f *Filesystem) Backup(ctx context.Context) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
+func (f *Filesystem) Backup(ctx context.Context, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
 	storageInfo, err = f.FormatRepository()
 	if err != nil {
 		return
@@ -34,7 +34,7 @@ func (f *Filesystem) Backup(ctx context.Context) (backupSummary *restic.SummaryO
 	}
 
 	f.BaseHandler.SetOptions(opts)
-	backupSummary, err = f.BaseHandler.Backup(ctx)
+	backupSummary, err = f.BaseHandler.Backup(ctx, progressCallback)
 	return backupSummary, storageInfo, err
 }
 

@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var p = func(percentDone float64) {}
+
 func NewCmdBackup() *cobra.Command {
 	rootBackupCmds := &cobra.Command{
 		Use:               "backup",
@@ -31,7 +33,7 @@ func NewCmdSpace() *cobra.Command {
 		Short: "Backup data to the Space",
 		Run: func(cmd *cobra.Command, args []string) {
 			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.TODO(), Space: o, Operator: constants.StorageOperatorCli})
-			backupService.Backup()
+			backupService.Backup(p)
 		},
 	}
 	o.AddFlags(cmd)
@@ -45,7 +47,7 @@ func NewCmdS3() *cobra.Command {
 		Short: "Backup data to Amazon S3 or S3-compatible storage",
 		Run: func(cmd *cobra.Command, args []string) {
 			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.TODO(), Aws: o, Operator: constants.StorageOperatorCli})
-			backupService.Backup()
+			backupService.Backup(p)
 		},
 	}
 	o.AddFlags(cmd)
@@ -59,7 +61,7 @@ func NewCmdCos() *cobra.Command {
 		Short: "Backup data to Tencent Cloud Object Storage (COS)",
 		Run: func(cmd *cobra.Command, args []string) {
 			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.TODO(), TencentCloud: o, Operator: constants.StorageOperatorCli})
-			backupService.Backup()
+			backupService.Backup(p)
 		},
 	}
 	o.AddFlags(cmd)
@@ -73,7 +75,7 @@ func NewCmdFs() *cobra.Command {
 		Short: "Backup data to the local filesystem or disk",
 		Run: func(cmd *cobra.Command, args []string) {
 			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.TODO(), Filesystem: o, Operator: constants.StorageOperatorCli})
-			backupService.Backup()
+			backupService.Backup(p)
 		},
 	}
 	o.AddFlags(cmd)

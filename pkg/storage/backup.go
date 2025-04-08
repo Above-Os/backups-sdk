@@ -43,7 +43,7 @@ func NewBackupService(option *BackupOption) *BackupService {
 	return backupService
 }
 
-func (b *BackupService) Backup() (*restic.SummaryOutput, *model.StorageInfo, error) {
+func (b *BackupService) Backup(progressCallback func(percentDone float64)) (*restic.SummaryOutput, *model.StorageInfo, error) {
 	var password = b.password
 	var err error
 	if password == "" {
@@ -106,5 +106,5 @@ func (b *BackupService) Backup() (*restic.SummaryOutput, *model.StorageInfo, err
 		logger.Fatalf("There is no suitable recovery method.")
 	}
 
-	return service.Backup(b.option.Ctx)
+	return service.Backup(b.option.Ctx, progressCallback)
 }
