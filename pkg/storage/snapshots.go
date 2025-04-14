@@ -12,10 +12,13 @@ import (
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/s3"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/space"
 	"bytetrade.io/web3os/backups-sdk/pkg/utils"
+	"go.uber.org/zap"
 )
 
 type SnapshotsOption struct {
 	Basedir      string
+	Password     string
+	Logger       *zap.SugaredLogger
 	Space        *options.SpaceSnapshotsOption
 	Aws          *options.AwsSnapshotsOption
 	TencentCloud *options.TencentCloudSnapshotsOption

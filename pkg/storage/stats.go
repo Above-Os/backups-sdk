@@ -8,6 +8,7 @@ import (
 
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/options"
+	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/cos"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/filesystem"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/s3"
@@ -17,6 +18,7 @@ import (
 
 type StatsOption struct {
 	Basedir      string
+	Password     string
 	Space        *options.SpaceSnapshotsOption
 	Aws          *options.AwsSnapshotsOption
 	TencentCloud *options.TencentCloudSnapshotsOption
@@ -24,22 +26,28 @@ type StatsOption struct {
 }
 
 type StatsService struct {
-	option *SnapshotsOption
+	password string
+	option   *SnapshotsOption
 }
 
 func NewStatsService(option *SnapshotsOption) *StatsService {
 
 	var statsService = &StatsService{
-		option: option,
+		password: option.Password,
+		option:   option,
 	}
 
 	return statsService
 }
 
-func (s *StatsService) Stats() {
-	password, err := utils.InputPasswordWithConfirm(false)
-	if err != nil {
-		panic(err)
+func (s *StatsService) Stats() (*restic.StatsContainer, error) {
+	var password = s.password
+	var err error
+	if password == "" {
+		password, err = utils.InputPasswordWithConfirm(true)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	var service Location
@@ -82,7 +90,7 @@ func (s *StatsService) Stats() {
 		}
 	} else {
 		logger.Fatalf("There is no suitable recovery method.")
-		return
+		return nil, err
 	}
 
 	var ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
@@ -90,8 +98,11 @@ func (s *StatsService) Stats() {
 
 	result, err := service.Stats(ctx)
 	if err != nil {
-		logger.Errorf("List Spanshots error: %v", err)
+		logger.Errorf("get stats error: %v", err)
+		return nil, err
 	}
 
 	fmt.Printf("%s", utils.ToJSON(result))
+
+	return result, nil
 }

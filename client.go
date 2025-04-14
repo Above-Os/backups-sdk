@@ -62,3 +62,9 @@ func NewRegionService(option *storage.RegionOption) *storage.RegionService {
 
 	return storage.NewRegionService(option)
 }
+
+func NewStatsService(option *storage.SnapshotsOption) *storage.StatsService {
+	logger.SetLogger(option.Logger)
+
+	return storage.NewStatsService(option)
+}
