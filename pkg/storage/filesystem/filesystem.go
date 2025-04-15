@@ -30,6 +30,7 @@ func (f *Filesystem) Backup(ctx context.Context, progressCallback func(percentDo
 	var envs = f.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
 		RepoName: f.RepoName,
+		Path:     f.Path,
 		RepoEnvs: envs,
 	}
 
