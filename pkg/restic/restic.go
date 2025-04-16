@@ -142,10 +142,10 @@ func (r *Restic) Init() (string, error) {
 	if err != nil {
 		var errmsg = string(output)
 		switch {
-		case strings.Contains(errmsg, ERROR_MESSAGE_ALREADY_INITIALIZED.Error()):
+		case strings.Contains(errmsg, ERROR_MESSAGE_ALREADY_INITIALIZED.Error()), strings.Contains(errmsg, ERROR_MESSAGE_CONFIG_FILE_ALREADY_EXISTS.Error()):
 			outerr = MESSAGE_REPOSITORY_ALREADY_INITIALIZED
-		case strings.Contains(errmsg, ERROR_MESSAGE_UNABLE_TO_OPEN_REPOSITORY.Error()):
-			outerr = MESSAGE_TOKEN_EXPIRED
+		// case strings.Contains(errmsg, ERROR_MESSAGE_UNABLE_TO_OPEN_REPOSITORY.Error()):
+		// 	outerr = MESSAGE_TOKEN_EXPIRED
 		default:
 			outerr = errmsg
 		}

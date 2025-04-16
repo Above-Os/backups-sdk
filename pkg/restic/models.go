@@ -112,7 +112,6 @@ type SummaryOutput struct {
 	TotalFilesProcessed uint    `json:"total_files_processed"`
 	TotalBytesProcessed uint64  `json:"total_bytes_processed"`
 	TotalDuration       float64 `json:"total_duration"` // in seconds
-	TotalSize           uint64  `json:"total_size"`
 	SnapshotID          string  `json:"snapshot_id,omitempty"`
 	DryRun              bool    `json:"dry_run,omitempty"`
 }

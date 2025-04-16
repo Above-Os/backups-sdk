@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -101,8 +100,6 @@ func (s *StatsService) Stats() (*restic.StatsContainer, error) {
 		logger.Errorf("get stats error: %v", err)
 		return nil, err
 	}
-
-	fmt.Printf("%s", utils.ToJSON(result))
 
 	return result, nil
 }
