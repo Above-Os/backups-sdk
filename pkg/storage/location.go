@@ -118,7 +118,7 @@ func (d *BaseHandler) Backup(ctx context.Context, progressCallback func(percentD
 func (h *BaseHandler) Restore(ctx context.Context, progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error) {
 	var snapshotId = h.opts.SnapshotId
 	var path = h.opts.Path
-	logger.Debugf("restore env vars: %s", utils.Base64encode([]byte(h.opts.RepoEnvs.String())))
+	logger.Debugf("restore env vars: %s, snapshotId: %s", utils.Base64encode([]byte(h.opts.RepoEnvs.String())), snapshotId)
 
 	var re *restic.Restic
 	re, err = restic.NewRestic(ctx, h.opts)

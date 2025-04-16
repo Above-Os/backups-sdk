@@ -54,6 +54,7 @@ func (s *Aws) Restore(ctx context.Context, progressCallback func(percentDone flo
 	var envs = s.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
 		RepoName:          s.RepoName,
+		SnapshotId:        s.SnapshotId,
 		RepoEnvs:          envs,
 		Path:              s.Path,
 		LimitDownloadRate: s.LimitDownloadRate,
