@@ -7,9 +7,11 @@ import (
 	"strings"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/constants"
+	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/model"
+	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 )
 
 type TencentCloud struct {
@@ -39,9 +41,12 @@ func (c *TencentCloud) Backup(ctx context.Context, progressCallback func(percent
 		RepoName:        c.RepoName,
 		CloudName:       c.CloudName,
 		RegionId:        c.RegionId,
-		RepoEnvs:        envs,
+		Path:            c.Path,
 		LimitUploadRate: c.LimitUploadRate,
+		RepoEnvs:        envs,
 	}
+
+	logger.Debugf("cos backup env vars: %s", utils.Base64encode([]byte(envs.String())))
 
 	c.BaseHandler.SetOptions(opts)
 
@@ -54,14 +59,19 @@ func (c *TencentCloud) Restore(ctx context.Context, progressCallback func(percen
 	if err != nil {
 		return
 	}
+
 	var envs = c.GetEnv(storageInfo.Url) // cos restore
 	var opts = &restic.ResticOptions{
 		RepoName:          c.RepoName,
+		CloudName:         c.CloudName,
+		RegionId:          c.RegionId,
 		SnapshotId:        c.SnapshotId,
 		RepoEnvs:          envs,
 		Path:              c.Path,
 		LimitDownloadRate: c.LimitDownloadRate,
 	}
+
+	logger.Debugf("cos restore env vars: %s", utils.Base64encode([]byte(envs.String())))
 
 	c.BaseHandler.SetOptions(opts)
 	return c.BaseHandler.Restore(ctx, progressCallback)
@@ -75,9 +85,10 @@ func (c *TencentCloud) Snapshots(ctx context.Context) error {
 
 	var envs = c.GetEnv(storageInfo.Url) // cos snapshot
 	var opts = &restic.ResticOptions{
-		RepoName:        c.RepoName,
-		RepoEnvs:        envs,
-		LimitUploadRate: c.LimitUploadRate,
+		RepoName:  c.RepoName,
+		CloudName: c.CloudName,
+		RegionId:  c.RegionId,
+		RepoEnvs:  envs,
 	}
 
 	c.BaseHandler.SetOptions(opts)
@@ -92,8 +103,10 @@ func (c *TencentCloud) Stats(ctx context.Context) (*restic.StatsContainer, error
 
 	var envs = c.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
-		RepoName: c.RepoName,
-		RepoEnvs: envs,
+		RepoName:  c.RepoName,
+		CloudName: c.CloudName,
+		RegionId:  c.RegionId,
+		RepoEnvs:  envs,
 	}
 
 	c.BaseHandler.SetOptions(opts)
