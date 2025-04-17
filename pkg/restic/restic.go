@@ -515,7 +515,7 @@ func (r *Restic) GetSnapshots(tags []string) (*SnapshotList, error) {
 	var restoreCtx, cancel = context.WithCancel(r.ctx)
 	defer cancel()
 
-	r.addCommand([]string{"snapshots", PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS}).addTags(tags)
+	r.addCommand([]string{"snapshots", PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS}).addTags(tags).addExtended().addRequestTimeout()
 
 	opts := utils.CommandOptions{
 		Path: r.dir,

@@ -7,9 +7,11 @@ import (
 	"strings"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/constants"
+	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/model"
+	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 )
 
 type Aws struct {
@@ -40,6 +42,8 @@ func (s *Aws) Backup(ctx context.Context, progressCallback func(percentDone floa
 		RepoEnvs:        envs,
 	}
 
+	logger.Debugf("s3 backup env vars: %s", utils.Base64encode([]byte(envs.String())))
+
 	s.BaseHandler.SetOptions(opts)
 
 	backupSummary, err = s.BaseHandler.Backup(ctx, progressCallback)
@@ -59,6 +63,8 @@ func (s *Aws) Restore(ctx context.Context, progressCallback func(percentDone flo
 		Path:              s.Path,
 		LimitDownloadRate: s.LimitDownloadRate,
 	}
+
+	logger.Debugf("s3 restore env vars: %s", utils.Base64encode([]byte(envs.String())))
 
 	s.BaseHandler.SetOptions(opts)
 	return s.BaseHandler.Restore(ctx, progressCallback)
