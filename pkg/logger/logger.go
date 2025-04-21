@@ -1,11 +1,15 @@
 package logger
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"os/user"
 	"path"
 	"time"
 
+	"bytetrade.io/web3os/backups-sdk/pkg/constants"
+	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -14,7 +18,27 @@ var logger *zap.SugaredLogger
 
 var FatalMessagePrefix = "[FATAL] "
 
-func InitLogger(jsonLogDir string, consoleLogTruncate bool) {
+func InitLogger(consoleLogTruncate bool) {
+	var user, err = user.Current()
+	if err != nil {
+		panic(errors.New("get current user failed"))
+	}
+
+	var homeDir, jsonLogDir string
+
+	if err = godotenv.Load(constants.OlaresReleaseFile); err != nil {
+		homeDir = user.HomeDir
+		jsonLogDir = path.Join(homeDir, constants.DefaultBaseDir, constants.DefaultLogsDir)
+	} else {
+		envOlaresBaseDir := os.Getenv(constants.ENV_OLARES_BASE_DIR)
+		if envOlaresBaseDir == "" {
+			homeDir = path.Join(user.HomeDir, constants.DefaultBaseDir)
+		} else {
+			homeDir = envOlaresBaseDir
+		}
+		jsonLogDir = path.Join(homeDir, constants.DefaultLogsDir)
+	}
+
 	found, err := isDirExist(jsonLogDir)
 	if err != nil {
 		fmt.Println("log dir found error", err)

@@ -8,6 +8,7 @@ require (
 	github.com/emicklei/go-restful/v3 v3.12.1
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/google/uuid v1.1.2
+	github.com/joho/godotenv v1.5.1
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/shirou/gopsutil/v4 v4.25.2
