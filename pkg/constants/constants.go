@@ -4,6 +4,10 @@ const (
 	DefaultBaseDir = ".olares"
 	DefaultLogsDir = "logs"
 
+	OlaresReleaseFile   = "/etc/olares/release"
+	ENV_OLARES_BASE_DIR = "OLARES_BASE_DIR"
+	ENV_OLARES_VERSION  = "OLARES_VERSION"
+
 	DefaultCloudApiUrl = "https://cloud-api.bttcdn.com"
 	DefaultDownloadUrl = "https://dc3p1870nn3cj.cloudfront.net"
 

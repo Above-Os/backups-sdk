@@ -42,7 +42,7 @@ func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone fl
 			LimitUploadRate: s.LimitUploadRate,
 		}
 
-		logger.Debugf("space backup env vars: %s", utils.Base64encode([]byte(envs.String())))
+		logger.Infof("space backup env vars: %s", utils.Base64encode([]byte(envs.String())))
 
 		var r *restic.Restic
 		r, err = restic.NewRestic(ctx, opts)
@@ -56,6 +56,7 @@ func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone fl
 			if err.Error() == restic.MESSAGE_REPOSITORY_ALREADY_INITIALIZED {
 				initialized = true
 			} else {
+				logger.Errorf("error initializing repo %s: %s", s.RepoName, err.Error())
 				break
 			}
 		}
