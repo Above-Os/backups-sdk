@@ -162,7 +162,7 @@ func (r *Restic) Stats() (*StatsContainer, error) {
 	var getCtx, cancel = context.WithCancel(r.ctx)
 	defer cancel()
 
-	r.addCommand([]string{"stats", PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS}).addExtended().addRequestTimeout()
+	r.addCommand([]string{"stats", "--mode", "files-by-contents", PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS}).addExtended().addRequestTimeout()
 
 	opts := utils.CommandOptions{
 		Path: r.dir,
