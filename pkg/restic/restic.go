@@ -136,7 +136,7 @@ func (r *Restic) Init() (string, error) {
 
 	cmd := exec.CommandContext(r.ctx, r.dir, r.args...)
 	cmd.Env = append(cmd.Env, r.opt.RepoEnvs.Slice()...)
-
+	logger.Infof("[Cmd] %s", cmd.String())
 	var outerr string
 	output, err := cmd.CombinedOutput()
 	if err != nil {

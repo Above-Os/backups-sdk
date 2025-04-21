@@ -2,7 +2,6 @@ package backupssdk
 
 import (
 	"errors"
-	"path"
 	"runtime"
 
 	"bytetrade.io/web3os/backups-sdk/cmd/backup"
@@ -10,19 +9,12 @@ import (
 	"bytetrade.io/web3os/backups-sdk/cmd/region"
 	"bytetrade.io/web3os/backups-sdk/cmd/restore"
 	"bytetrade.io/web3os/backups-sdk/cmd/snapshots"
-	"bytetrade.io/web3os/backups-sdk/pkg/constants"
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage"
-	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
 func NewBackupCommands() *cobra.Command {
-	var homeDir = utils.GetHomeDir()
-	var jsonLogDir = path.Join(homeDir, constants.DefaultBaseDir, constants.DefaultLogsDir)
-
-	logger.InitLogger(jsonLogDir, true)
-
 	if runtime.GOOS == "windows" {
 		panic(errors.New("Windows system is not currently supported. Please switch to WSL (Windows Subsystem for Linux)."))
 	}
@@ -30,6 +22,9 @@ func NewBackupCommands() *cobra.Command {
 	cmds := &cobra.Command{
 		Use:   "backups",
 		Short: "Olares backup tool-kit",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			logger.InitLogger(true)
+		},
 		CompletionOptions: cobra.CompletionOptions{
 			DisableDefaultCmd: true,
 			DisableNoDescFlag: true,
