@@ -346,6 +346,7 @@ func (r *Restic) Repair() error {
 	}, func() error {
 		res, err := r.repairIndex()
 		if err != nil {
+			logger.Errorf("[restic] repair %s error: %s", r.opt.RepoName, err)
 			return err
 		}
 

@@ -70,6 +70,7 @@ func (d *BaseHandler) Backup(ctx context.Context, progressCallback func(percentD
 		logger.Infof("repo %s already initialized", repoName)
 		logger.Infof("repairing repo %s index", repoName)
 		if err = r.Repair(); err != nil {
+			logger.Errorf("repo %s repair error: %v", repoName, err)
 			return
 		}
 	} else {

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"bytetrade.io/web3os/backups-sdk/pkg/constants"
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/options"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
@@ -75,6 +76,7 @@ func (s *StatsService) Stats() (*restic.StatsContainer, error) {
 		service = &cos.TencentCloud{
 			RepoName:        s.option.TencentCloud.RepoName,
 			Endpoint:        s.option.TencentCloud.Endpoint,
+			CloudName:       constants.CloudTencentName,
 			AccessKey:       s.option.TencentCloud.AccessKey,
 			SecretAccessKey: s.option.TencentCloud.SecretAccessKey,
 			Password:        password,

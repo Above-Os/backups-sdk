@@ -80,7 +80,9 @@ func (c *Command) Run() (string, error) {
 			return result, nil
 		default:
 			line := scanner.Bytes()
-			c.Ch <- line
+			lineCopy := make([]byte, len(line))
+			copy(lineCopy, line)
+			c.Ch <- lineCopy
 		}
 	}
 
