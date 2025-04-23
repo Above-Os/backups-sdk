@@ -15,14 +15,14 @@ import (
 )
 
 func NewBackupCommands() *cobra.Command {
-	if runtime.GOOS == "windows" {
-		panic(errors.New("Windows system is not currently supported. Please switch to WSL (Windows Subsystem for Linux)."))
-	}
-
 	cmds := &cobra.Command{
 		Use:   "backups",
 		Short: "Olares backup tool-kit",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if runtime.GOOS == "windows" {
+				panic(errors.New("Windows system is not currently supported. Please switch to WSL (Windows Subsystem for Linux)."))
+			}
+
 			logger.InitLogger(true)
 		},
 		CompletionOptions: cobra.CompletionOptions{

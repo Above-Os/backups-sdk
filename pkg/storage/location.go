@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"bytetrade.io/web3os/backups-sdk/pkg/constants"
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
@@ -35,6 +36,7 @@ func (d *BaseHandler) SetOptions(opts *restic.ResticOptions) {
 }
 
 func (d *BaseHandler) Backup(ctx context.Context, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, err error) {
+	var traceId = ctx.Value(constants.TraceId).(string)
 	var repoName = d.opts.RepoName
 	var path = d.opts.Path
 
@@ -48,7 +50,7 @@ func (d *BaseHandler) Backup(ctx context.Context, progressCallback func(percentD
 
 	// backupType = constants.FullyBackup
 
-	logger.Infof("initializing repo %s", repoName)
+	logger.Infof("initializing repo %s, traceId: %s", repoName, traceId)
 	initResult, err = r.Init()
 
 	if err != nil {
@@ -67,23 +69,38 @@ func (d *BaseHandler) Backup(ctx context.Context, progressCallback func(percentD
 	// }
 
 	if initialized {
-		logger.Infof("repo %s already initialized", repoName)
-		logger.Infof("repairing repo %s index", repoName)
+		logger.Infof("repo %s already initialized, traceId: %s, repairing index", repoName, traceId)
 		if err = r.Repair(); err != nil {
 			logger.Errorf("repo %s repair error: %v", repoName, err)
 			return
 		}
 	} else {
-		logger.Infof("repo %s initialized\n\n%s", repoName, initResult)
+		logger.Infof("repo %s initialized, traceId: %s\n\n%s", repoName, traceId, initResult)
 	}
 
-	logger.Infof("preparing to start repo %s backup", repoName)
+	logger.Infof("preparing to start repo %s backup, traceId: %s", repoName, traceId)
 
 	var tags = []string{
 		fmt.Sprintf("repo-name=%s", repoName),
 	}
 
-	backupSummary, err = r.Backup(path, "", tags, progressCallback)
+	var progressChan = make(chan float64, 100)
+	defer close(progressChan)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case progress, ok := <-progressChan:
+				if !ok {
+					return
+				}
+				progressCallback(progress)
+			}
+		}
+	}()
+
+	backupSummary, err = r.Backup(path, "", tags, traceId, progressChan)
 	if err != nil {
 		err = errors.WithStack(err)
 		return
@@ -111,7 +128,7 @@ func (d *BaseHandler) Backup(ctx context.Context, progressCallback func(percentD
 	// 	}
 	// }
 
-	logger.Info("Backup successful, result: ", utils.ToJSON(backupSummary))
+	logger.Infof("Backup successful, result: %s, traceId: %s", utils.ToJSON(backupSummary), traceId)
 
 	return
 }
@@ -135,7 +152,23 @@ func (h *BaseHandler) Restore(ctx context.Context, progressCallback func(percent
 	var uploadPath = snapshotSummary.Paths[0]
 	logger.Infof("restore spanshot %s detail: %s", snapshotId, utils.ToJSON(snapshotSummary))
 
-	restoreSummary, err = re.Restore(snapshotId, uploadPath, path, progressCallback)
+	var progressChan = make(chan float64, 100)
+	defer close(progressChan)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case progress, ok := <-progressChan:
+				if !ok {
+					return
+				}
+				progressCallback(progress)
+			}
+		}
+	}()
+
+	restoreSummary, err = re.Restore(snapshotId, uploadPath, path, progressChan)
 	if err != nil {
 		err = fmt.Errorf("restore %s snapshot %s error: %v", h.opts.RepoName, h.opts.SnapshotId, err)
 		return

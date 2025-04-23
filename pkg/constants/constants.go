@@ -32,4 +32,6 @@ const (
 
 	StorageOperatorCli = "cli"
 	StorageOperatorApp = "app"
+
+	TraceId = "traceId"
 )

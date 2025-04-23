@@ -17,12 +17,12 @@ import (
 )
 
 func main() {
-	if runtime.GOOS == "windows" {
-		panic(errors.New("Windows system is not currently supported. Please switch to WSL (Windows Subsystem for Linux)."))
-	}
-
 	cmds := &cobra.Command{
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if runtime.GOOS == "windows" {
+				panic(errors.New("Windows system is not currently supported. Please switch to WSL (Windows Subsystem for Linux)."))
+			}
+
 			logger.InitLogger(true)
 		},
 		CompletionOptions: cobra.CompletionOptions{

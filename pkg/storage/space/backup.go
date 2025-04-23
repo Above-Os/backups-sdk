@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"bytetrade.io/web3os/backups-sdk/pkg/constants"
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/model"
@@ -26,7 +27,26 @@ func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone fl
 		return
 	}
 
+	var traceId = ctx.Value(constants.TraceId).(string)
+
 	// backupType = constants.FullyBackup
+
+	var progressChan = make(chan float64, 100)
+	defer close(progressChan)
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case progress, ok := <-progressChan:
+				if !ok {
+					return
+				}
+				progressCallback(progress)
+			}
+		}
+	}()
 
 	for {
 		var initResult string
@@ -42,7 +62,7 @@ func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone fl
 			LimitUploadRate: s.LimitUploadRate,
 		}
 
-		logger.Infof("space backup env vars: %s", utils.Base64encode([]byte(envs.String())))
+		logger.Infof("space backup env vars: %s, traceId: %s", utils.Base64encode([]byte(envs.String())), traceId)
 
 		var r *restic.Restic
 		r, err = restic.NewRestic(ctx, opts)
@@ -50,13 +70,13 @@ func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone fl
 			break
 		}
 
-		logger.Infof("initializing repo %s", s.RepoName)
+		logger.Infof("initializing repo %s, traceId: %s", s.RepoName, traceId)
 		initResult, err = r.Init()
 		if err != nil {
 			if err.Error() == restic.MESSAGE_REPOSITORY_ALREADY_INITIALIZED {
 				initialized = true
 			} else {
-				logger.Errorf("error initializing repo %s: %s", s.RepoName, err.Error())
+				logger.Errorf("error initializing repo %s, err: %s, traceId: %s", s.RepoName, err.Error(), traceId)
 				break
 			}
 		}
@@ -69,32 +89,32 @@ func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone fl
 		// }
 
 		if initialized {
-			logger.Infof("repo %s already initialized", s.RepoName)
-			logger.Infof("repairing repo %s index", s.RepoName)
+			logger.Infof("repo %s already initialized, traceId: %s", s.RepoName, traceId)
+			logger.Infof("repairing repo %s index, traceId: %s", s.RepoName, traceId)
 			if err = r.Repair(); err != nil {
 				break
 			}
 		} else {
-			logger.Infof("repo %s initialized\n\n%s", s.RepoName, initResult)
+			logger.Infof("repo %s initialized, traceId: %s\n\n%s", s.RepoName, traceId, initResult)
 		}
 
-		logger.Infof("preparing to start repo %s backup", s.RepoName)
+		logger.Infof("preparing to start repo %s backup, traceId: %s", s.RepoName, traceId)
 
 		var tags = []string{
 			fmt.Sprintf("repo-name=%s", s.RepoName),
 			fmt.Sprintf("repo-suffix=%s", repoSuffix),
 		}
 
-		backupSummary, err = r.Backup(s.Path, "", tags, progressCallback)
+		backupSummary, err = r.Backup(s.Path, "", tags, traceId, progressChan)
 		if err != nil {
 			switch err.Error() {
 			case restic.ERROR_MESSAGE_BACKUP_CANCELED.Error():
-				logger.Infof("backup canceled, stopping...")
+				logger.Infof("backup canceled, stopping..., traceId: %s", traceId)
 				return
 			case restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error():
-				logger.Infof("space backup upload stopped, sts token expired, refresh and retring...")
+				logger.Infof("space backup upload stopped, sts token expired, refresh and retring..., traceId: %s", traceId)
 				if err = s.refreshStsTokens(ctx); err != nil {
-					err = fmt.Errorf("space backup upload sts token service refresh-token error: %v", err)
+					err = fmt.Errorf("space backup upload sts token service refresh-token error: %v, traceId: %s", err, traceId)
 					return
 				}
 				continue
@@ -124,7 +144,7 @@ func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone fl
 		// 	}
 		// }
 
-		logger.Infof("Backup successful, name: %s, result: %s", s.RepoName, utils.ToJSON(backupSummary))
+		logger.Infof("Backup successful, name: %s, result: %s, traceId: %s", s.RepoName, utils.ToJSON(backupSummary), traceId)
 		// if err := s.sendBackup(backupSummary, currentBackupType, opts.RepoEnvs.RESTIC_REPOSITORY); err != nil {
 		// 	logger.Errorf("send backup to cloud error: %v", err)
 		// }
