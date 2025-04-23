@@ -228,7 +228,7 @@ func (r *Restic) Tag(snapshotId string, tags []string) error {
 	return nil
 }
 
-func (r *Restic) Backup(folder string, filePathPrefix string, tags []string, progressCallback func(percentDone float64)) (*SummaryOutput, error) {
+func (r *Restic) Backup(folder string, filePathPrefix string, tags []string, traceId string, progressChan chan float64) (*SummaryOutput, error) {
 	r.addCommand([]string{"backup", folder, r.opt.SetLimitUploadRate(), PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS}).
 		addExtended().
 		addRequestTimeout().
@@ -251,7 +251,7 @@ func (r *Restic) Backup(folder string, filePathPrefix string, tags []string, pro
 		for {
 			select {
 			case <-r.ctx.Done():
-				logger.Infof("[restic] backup canceled")
+				logger.Infof("[restic] backup canceled, traceId: %s", traceId)
 				errorMsg = ERROR_MESSAGE_BACKUP_CANCELED
 				return
 			case res, ok := <-c.Ch:
@@ -264,7 +264,7 @@ func (r *Restic) Backup(folder string, filePathPrefix string, tags []string, pro
 				status := messagePool.Get()
 				if err := json.Unmarshal(res, status); err != nil {
 					var msg = string(res)
-					logger.Debugf("[restic] backup %s error message: %s", r.opt.RepoName, msg)
+					logger.Errorf("[restic] backup %s error message: %s, traceId: %s", r.opt.RepoName, msg, traceId)
 					messagePool.Put(status)
 					switch {
 					case strings.Contains(msg, ERROR_MESSAGE_TOKEN_EXPIRED.Error()),
@@ -287,15 +287,15 @@ func (r *Restic) Backup(folder string, filePathPrefix string, tags []string, pro
 					switch {
 					case math.Abs(status.PercentDone-0.0) < tolerance:
 						logger.Infof(PRINT_START_MESSAGE, status.TotalFiles, utils.FormatBytes(status.TotalBytes))
-						progressCallback(status.PercentDone)
+						progressChan <- status.PercentDone
 					case math.Abs(status.PercentDone-1.0) < tolerance:
 						if !finished {
 							logger.Infof(PRINT_FINISH_MESSAGE, status.TotalFiles, utils.FormatBytes(status.TotalBytes))
 							finished = true
-							progressCallback(status.PercentDone)
+							progressChan <- status.PercentDone
 						}
 					default:
-						if prevPercent != status.PercentDone {
+						if prevPercent != 0 && prevPercent != status.PercentDone {
 							logger.Infof(PRINT_PROGRESS_MESSAGE,
 								status.GetPercentDone(),
 								status.FilesDone,
@@ -303,13 +303,13 @@ func (r *Restic) Backup(folder string, filePathPrefix string, tags []string, pro
 								utils.FormatBytes(status.BytesDone),
 								utils.FormatBytes(status.TotalBytes),
 								r.fileNameTidy(status.CurrentFiles, filePathPrefix))
-							progressCallback(status.PercentDone)
+							progressChan <- status.PercentDone
 						}
 						prevPercent = status.PercentDone
 					}
 				case "summary":
 					if err := json.Unmarshal(res, &summary); err != nil {
-						logger.Debugf("[restic] backup %s error summary unmarshal message: %s", r.opt.RepoName, string(res))
+						logger.Errorf("[restic] backup %s error summary unmarshal message: %s, traceId: %s", r.opt.RepoName, string(res), traceId)
 						messagePool.Put(status)
 						errorMsg = RESTIC_ERROR_MESSAGE(err.Error())
 						c.Cancel()
@@ -581,7 +581,7 @@ func (r *Restic) GetSnapshots(tags []string) (*SnapshotList, error) {
 	return summary, nil
 }
 
-func (r *Restic) Restore(snapshotId string, uploadPath string, target string, progressCallback func(percentDone float64)) (*RestoreSummaryOutput, error) {
+func (r *Restic) Restore(snapshotId string, uploadPath string, target string, progressChan chan float64) (*RestoreSummaryOutput, error) {
 	r.addCommand([]string{"restore", r.opt.SetLimitDownloadRate(), "-t", target, "-v=3", PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS, fmt.Sprintf("%s:%s", snapshotId, uploadPath)}).addExtended().addRequestTimeout()
 
 	// var restoreCtx, cancel = context.WithCancel(r.ctx)
@@ -644,13 +644,13 @@ func (r *Restic) Restore(snapshotId string, uploadPath string, target string, pr
 						if !started {
 							logger.Infof(PRINT_RESTORE_START_MESSAGE, status.TotalFiles, utils.FormatBytes(status.TotalBytes))
 							started = true
-							progressCallback(status.PercentDone)
+							progressChan <- status.PercentDone
 						}
 					case math.Abs(status.PercentDone-1.0) < tolerance:
 						if !finished {
 							logger.Infof(PRINT_RESTORE_FINISH_MESSAGE, snapshotId, status.TotalFiles, status.FilesRestored, utils.FormatBytes(status.TotalBytes), utils.FormatBytes(status.BytesRestored))
 							finished = true
-							progressCallback(status.PercentDone)
+							progressChan <- status.PercentDone
 						}
 					default:
 						if prevPercent != status.PercentDone {
@@ -661,7 +661,7 @@ func (r *Restic) Restore(snapshotId string, uploadPath string, target string, pr
 								utils.FormatBytes(status.BytesRestored),
 								utils.FormatBytes(status.TotalBytes),
 							)
-							progressCallback(status.PercentDone)
+							progressChan <- status.PercentDone
 						}
 						prevPercent = status.PercentDone
 					}
@@ -682,7 +682,6 @@ func (r *Restic) Restore(snapshotId string, uploadPath string, target string, pr
 						return
 					}
 					restoreMessagePool.Put(status)
-					progressCallback(1.0)
 					return
 				}
 				restoreMessagePool.Put(status)

@@ -23,6 +23,22 @@ func (s *Space) Restore(ctx context.Context, progressCallback func(percentDone f
 		return
 	}
 
+	var progressChan = make(chan float64, 100)
+	defer close(progressChan)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case progress, ok := <-progressChan:
+				if !ok {
+					return
+				}
+				progressCallback(progress)
+			}
+		}
+	}()
+
 	for {
 		var envs = s.GetEnv(storageInfo.Url)
 		var opts = &restic.ResticOptions{
@@ -51,7 +67,7 @@ func (s *Space) Restore(ctx context.Context, progressCallback func(percentDone f
 		var backupPath = currentSnapshot.Paths[0]
 		logger.Infof("space restore spanshot %s detail: %s", s.SnapshotId, utils.ToJSON(currentSnapshot))
 
-		restoreSummary, err = r.Restore(s.SnapshotId, backupPath, s.Path, progressCallback)
+		restoreSummary, err = r.Restore(s.SnapshotId, backupPath, s.Path, progressChan)
 		if err != nil {
 			switch err.Error() {
 			case restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error():

@@ -6,6 +6,7 @@ import (
 	"bytetrade.io/web3os/backups-sdk/pkg/constants"
 	"bytetrade.io/web3os/backups-sdk/pkg/options"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage"
+	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +33,7 @@ func NewCmdSpace() *cobra.Command {
 		Use:   "space",
 		Short: "Backup data to the Space",
 		Run: func(cmd *cobra.Command, args []string) {
-			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.TODO(), Space: o, Operator: constants.StorageOperatorCli})
+			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.WithValue(context.TODO(), constants.TraceId, utils.NewUUID()), Space: o, Operator: constants.StorageOperatorCli})
 			backupService.Backup(p)
 		},
 	}
