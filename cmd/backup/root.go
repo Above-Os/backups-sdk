@@ -47,7 +47,7 @@ func NewCmdS3() *cobra.Command {
 		Use:   "s3",
 		Short: "Backup data to Amazon S3 or S3-compatible storage",
 		Run: func(cmd *cobra.Command, args []string) {
-			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.TODO(), Aws: o, Operator: constants.StorageOperatorCli})
+			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.WithValue(context.TODO(), constants.TraceId, utils.NewUUID()), Aws: o, Operator: constants.StorageOperatorCli})
 			backupService.Backup(p)
 		},
 	}
@@ -61,7 +61,7 @@ func NewCmdCos() *cobra.Command {
 		Use:   "cos",
 		Short: "Backup data to Tencent Cloud Object Storage (COS)",
 		Run: func(cmd *cobra.Command, args []string) {
-			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.TODO(), TencentCloud: o, Operator: constants.StorageOperatorCli})
+			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.WithValue(context.TODO(), constants.TraceId, utils.NewUUID()), TencentCloud: o, Operator: constants.StorageOperatorCli})
 			backupService.Backup(p)
 		},
 	}
@@ -75,7 +75,7 @@ func NewCmdFs() *cobra.Command {
 		Use:   "fs",
 		Short: "Backup data to the local filesystem or disk",
 		Run: func(cmd *cobra.Command, args []string) {
-			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.TODO(), Filesystem: o, Operator: constants.StorageOperatorCli})
+			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.WithValue(context.TODO(), constants.TraceId, utils.NewUUID()), Filesystem: o, Operator: constants.StorageOperatorCli})
 			backupService.Backup(p)
 		},
 	}
