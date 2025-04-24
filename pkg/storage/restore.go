@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
@@ -110,5 +111,10 @@ func (r *RestoreService) Restore(progressCallback func(percentDone float64)) (re
 		logger.Fatalf("There is no suitable recovery method.")
 	}
 
-	return service.Restore(r.option.Ctx, progressCallback)
+	restoreOutput, err := service.Restore(r.option.Ctx, progressCallback)
+	if err != nil {
+		fmt.Printf("Restore error: %v", err)
+	}
+
+	return restoreOutput, err
 }
