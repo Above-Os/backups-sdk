@@ -96,9 +96,10 @@ func (s *Space) Stats(ctx context.Context) (*restic.StatsContainer, error) {
 
 	var envs = s.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
-		RepoName:        s.RepoName,
-		RepoEnvs:        envs,
-		LimitUploadRate: s.LimitUploadRate,
+		RepoName:  s.RepoName,
+		CloudName: s.CloudName,
+		RegionId:  s.RegionId,
+		RepoEnvs:  envs,
 	}
 	logger.Debugf("space stats env vars: %s", utils.Base64encode([]byte(envs.String())))
 
