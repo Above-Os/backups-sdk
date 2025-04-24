@@ -749,7 +749,7 @@ func (r *Restic) addTags(tags []string) *Restic {
 }
 
 func (r *Restic) addExtended() *Restic {
-	var cloudName = r.opt.CloudName
+	var cloudName = strings.ToLower(r.opt.CloudName)
 	if cloudName == constants.CloudTencentName {
 		r.args = append(r.args, "-o", "s3.bucket-lookup=dns", "-o", fmt.Sprintf("s3.region=%s", r.opt.RegionId))
 	}
@@ -757,7 +757,7 @@ func (r *Restic) addExtended() *Restic {
 }
 
 func (r *Restic) addRequestTimeout() *Restic {
-	r.args = append(r.args, "--stuck-request-timeout", "120s")
+	r.args = append(r.args, "--stuck-request-timeout", "60s")
 	return r
 }
 
