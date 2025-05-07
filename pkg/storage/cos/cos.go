@@ -149,9 +149,9 @@ func (c *TencentCloud) FormatRepository() (storageInfo *model.StorageInfo, err e
 
 	var repoBase = repoSplit[0]
 	var repoBucket = repoSplit[1]
-	var repoPrefix = ""
+	var repoPrefix = constants.OlaresStorageDefaultPrefix
 	if len(repoSplit) > 2 { // todo unittest
-		repoPrefix = fmt.Sprintf("%s/", strings.Join(repoSplit[2:], "/"))
+		repoPrefix = fmt.Sprintf("%s/%s", strings.Join(repoSplit[2:], "/"), constants.OlaresStorageDefaultPrefix)
 	}
 
 	var repoBaseSplit = strings.SplitN(repoBase, ".", 3)
