@@ -135,9 +135,9 @@ func (s *Aws) FormatRepository() (storageInfo *model.StorageInfo, err error) {
 		return nil, fmt.Errorf("s3 endpoint %v is invalid", repoSplit)
 	}
 	var repoBase = repoSplit[0]
-	var repoPrefix = ""
+	var repoPrefix = constants.OlaresStorageDefaultPrefix
 	if len(repoSplit) >= 2 {
-		repoPrefix = fmt.Sprintf("%s/", repoSplit[1])
+		repoPrefix = fmt.Sprintf("%s/%s", repoSplit[1], constants.OlaresStorageDefaultPrefix)
 	}
 
 	var repoBaseSplit = strings.SplitN(repoBase, ".", 3)
