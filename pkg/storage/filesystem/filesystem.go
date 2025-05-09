@@ -17,6 +17,7 @@ type Filesystem struct {
 	Endpoint    string
 	Password    string
 	Path        string
+	Files       []string
 	BaseHandler base.Interface
 	Operator    string
 }
@@ -31,6 +32,8 @@ func (f *Filesystem) Backup(ctx context.Context, progressCallback func(percentDo
 	var opts = &restic.ResticOptions{
 		RepoName: f.RepoName,
 		Path:     f.Path,
+		Files:    f.Files,
+		Operator: f.Operator,
 		RepoEnvs: envs,
 	}
 

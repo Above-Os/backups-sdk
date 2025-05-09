@@ -65,6 +65,14 @@ func (s *Space) Restore(ctx context.Context, progressCallback func(percentDone f
 		}
 
 		var backupPath = currentSnapshot.Paths[0]
+
+		for _, tag := range currentSnapshot.Tags {
+			if tag == "content-type=files" {
+				backupPath = ""
+				break
+			}
+		}
+
 		logger.Infof("space restore spanshot %s detail: %s", s.SnapshotId, utils.ToJSON(currentSnapshot))
 
 		restoreSummary, err = r.Restore(s.SnapshotId, backupPath, s.Path, progressChan)

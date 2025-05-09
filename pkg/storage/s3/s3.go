@@ -24,6 +24,7 @@ type Aws struct {
 	LimitUploadRate   string
 	LimitDownloadRate string
 	Path              string
+	Files             []string
 	BaseHandler       base.Interface
 	Operator          string
 }
@@ -38,7 +39,9 @@ func (s *Aws) Backup(ctx context.Context, progressCallback func(percentDone floa
 	var opts = &restic.ResticOptions{
 		RepoName:        s.RepoName,
 		Path:            s.Path,
+		Files:           s.Files,
 		LimitUploadRate: s.LimitUploadRate,
+		Operator:        s.Operator,
 		RepoEnvs:        envs,
 	}
 

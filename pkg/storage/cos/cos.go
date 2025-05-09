@@ -26,6 +26,7 @@ type TencentCloud struct {
 	LimitUploadRate   string
 	LimitDownloadRate string
 	Path              string
+	Files             []string
 	BaseHandler       base.Interface
 	Operator          string
 }
@@ -42,7 +43,9 @@ func (c *TencentCloud) Backup(ctx context.Context, progressCallback func(percent
 		CloudName:       c.CloudName,
 		RegionId:        c.RegionId,
 		Path:            c.Path,
+		Files:           c.Files,
 		LimitUploadRate: c.LimitUploadRate,
+		Operator:        c.Operator,
 		RepoEnvs:        envs,
 	}
 

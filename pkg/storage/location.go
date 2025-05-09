@@ -38,7 +38,7 @@ func (d *BaseHandler) SetOptions(opts *restic.ResticOptions) {
 func (d *BaseHandler) Backup(ctx context.Context, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, err error) {
 	var traceId = ctx.Value(constants.TraceId).(string)
 	var repoName = d.opts.RepoName
-	var path = d.opts.Path
+	var tags = d.getTags()
 
 	r, err := restic.NewRestic(ctx, d.opts)
 	if err != nil {
@@ -80,10 +80,6 @@ func (d *BaseHandler) Backup(ctx context.Context, progressCallback func(percentD
 
 	logger.Infof("preparing to start repo %s backup, traceId: %s", repoName, traceId)
 
-	var tags = []string{
-		fmt.Sprintf("repo-name=%s", repoName),
-	}
-
 	var progressChan = make(chan float64, 100)
 	defer close(progressChan)
 	go func() {
@@ -100,7 +96,7 @@ func (d *BaseHandler) Backup(ctx context.Context, progressCallback func(percentD
 		}
 	}()
 
-	backupSummary, err = r.Backup(path, "", tags, traceId, progressChan)
+	backupSummary, err = r.Backup(d.opts.Path, d.opts.Files, "", tags, traceId, progressChan)
 	if err != nil {
 		err = errors.WithStack(err)
 		return
@@ -150,6 +146,14 @@ func (h *BaseHandler) Restore(ctx context.Context, progressCallback func(percent
 	}
 
 	var uploadPath = snapshotSummary.Paths[0]
+
+	for _, tag := range snapshotSummary.Tags {
+		if tag == "content-type=files" {
+			uploadPath = ""
+			break
+		}
+	}
+
 	logger.Infof("restore spanshot %s detail: %s", snapshotId, utils.ToJSON(snapshotSummary))
 
 	var progressChan = make(chan float64, 100)
@@ -209,4 +213,22 @@ func (h *BaseHandler) Stats(ctx context.Context) (*restic.StatsContainer, error)
 		return nil, err
 	}
 	return stats, nil
+}
+
+func (h *BaseHandler) getTags() []string {
+	var tags = []string{
+		fmt.Sprintf("repo-name=%s", h.opts.RepoName),
+	}
+
+	if h.opts.Operator != "" {
+		tags = append(tags, fmt.Sprintf("operator=%s", h.opts.Operator))
+	}
+
+	if h.opts.Files != nil && len(h.opts.Files) > 0 {
+		tags = append(tags, "content-type=files")
+	} else {
+		tags = append(tags, "content-type=dirs")
+	}
+
+	return tags
 }

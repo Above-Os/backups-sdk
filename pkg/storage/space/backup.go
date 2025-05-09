@@ -58,6 +58,7 @@ func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone fl
 			RepoSuffix:      repoSuffix,
 			CloudName:       s.CloudName,
 			RegionId:        s.RegionId,
+			Operator:        s.Operator,
 			RepoEnvs:        envs,
 			LimitUploadRate: s.LimitUploadRate,
 		}
@@ -100,12 +101,10 @@ func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone fl
 
 		logger.Infof("preparing to start repo %s backup, traceId: %s", s.RepoName, traceId)
 
-		var tags = []string{
-			fmt.Sprintf("repo-name=%s", s.RepoName),
-			fmt.Sprintf("repo-suffix=%s", repoSuffix),
-		}
+		var tags = s.getTags()
+		tags = append(tags, fmt.Sprintf("repo-suffix=%s", repoSuffix))
 
-		backupSummary, err = r.Backup(s.Path, "", tags, traceId, progressChan)
+		backupSummary, err = r.Backup(s.Path, s.Files, "", tags, traceId, progressChan)
 		if err != nil {
 			switch err.Error() {
 			case restic.ERROR_MESSAGE_BACKUP_CANCELED.Error():

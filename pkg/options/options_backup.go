@@ -8,15 +8,16 @@ import (
 var _ Option = &SpaceBackupOption{}
 
 type SpaceBackupOption struct {
-	RepoName        string `json:"repo_name"`
-	Path            string `json:"path"`
-	LimitUploadRate string `json:"limit_upload_rate"`
-	OlaresDid       string `json:"olares_did"`
-	AccessToken     string `json:"access_token"`
-	ClusterId       string `json:"cluster_id"`
-	CloudName       string `json:"cloud_name"`
-	RegionId        string `json:"region_id"`
-	CloudApiMirror  string `json:"cloud_api_mirror"`
+	RepoName        string   `json:"repo_name"`
+	Path            string   `json:"path"`
+	Files           []string `json:"files"`
+	LimitUploadRate string   `json:"limit_upload_rate"`
+	OlaresDid       string   `json:"olares_did"`
+	AccessToken     string   `json:"access_token"`
+	ClusterId       string   `json:"cluster_id"`
+	CloudName       string   `json:"cloud_name"`
+	RegionId        string   `json:"region_id"`
+	CloudApiMirror  string   `json:"cloud_api_mirror"`
 }
 
 func NewBackupSpaceOption() *SpaceBackupOption {
@@ -26,6 +27,7 @@ func NewBackupSpaceOption() *SpaceBackupOption {
 func (o *SpaceBackupOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 	cmd.Flags().StringVarP(&o.Path, "path", "", "", "The directory to be backed up")
+	cmd.Flags().StringSliceVarP(&o.Files, "files-from", "", []string{}, "Read the files to backup from file, can be specified multiple times")
 	cmd.Flags().StringVarP(&o.LimitUploadRate, "limit-upload-rate", "", "", "Limits uploads to a maximum rate in KiB/s. (default: unlimited)")
 	cmd.Flags().StringVarP(&o.OlaresDid, "olares-did", "", "", "Olares DID")
 	cmd.Flags().StringVarP(&o.AccessToken, "access-token", "", "", "Space Access Token")
@@ -44,6 +46,7 @@ type AwsBackupOption struct {
 	AccessKey       string
 	SecretAccessKey string
 	Path            string
+	Files           []string `json:"files"`
 	LimitUploadRate string
 }
 
@@ -59,6 +62,7 @@ func (o *AwsBackupOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.SecretAccessKey, "secret-access-key", "", "", "Secret Access Key for S3")
 
 	cmd.Flags().StringVarP(&o.Path, "path", "", "", "The directory to be backed up")
+	cmd.Flags().StringSliceVarP(&o.Files, "files-from", "", []string{}, "Read the files to backup from file, can be specified multiple times")
 	cmd.Flags().StringVarP(&o.LimitUploadRate, "limit-upload-rate", "", "", "Limits uploads to a maximum rate in KiB/s. (default: unlimited)")
 }
 
@@ -71,6 +75,7 @@ type TencentCloudBackupOption struct {
 	AccessKey       string
 	SecretAccessKey string
 	Path            string
+	Files           []string `json:"files"`
 	LimitUploadRate string
 }
 
@@ -86,6 +91,7 @@ func (o *TencentCloudBackupOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.SecretAccessKey, "secret-access-key", "", "", "Secret Access Key for Tencent COS")
 
 	cmd.Flags().StringVarP(&o.Path, "path", "", "", "The directory to be backed up")
+	cmd.Flags().StringSliceVarP(&o.Files, "files-from", "", []string{}, "Read the files to backup from file, can be specified multiple times")
 	cmd.Flags().StringVarP(&o.LimitUploadRate, "limit-upload-rate", "", "", "Limits uploads to a maximum rate in KiB/s. (default: unlimited)")
 }
 
@@ -96,6 +102,7 @@ type FilesystemBackupOption struct {
 	RepoName string
 	Endpoint string
 	Path     string
+	Files    []string `json:"files"`
 }
 
 func NewBackupFilesystemOption() *FilesystemBackupOption {
@@ -106,4 +113,5 @@ func (o *FilesystemBackupOption) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 	cmd.Flags().StringVarP(&o.Endpoint, "endpoint", "", "", "The endpoint of the filesystem is the local computer directory where the backup will be stored")
 	cmd.Flags().StringVarP(&o.Path, "path", "", "", "The directory to be backed up")
+	cmd.Flags().StringSliceVarP(&o.Files, "files-from", "", []string{}, "Read the files to backup from file, can be specified multiple times")
 }

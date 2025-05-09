@@ -26,6 +26,7 @@ type Space struct {
 	RegionId          string
 	Password          string
 	Path              string
+	Files             []string
 	LimitUploadRate   string
 	LimitDownloadRate string
 	CloudApiMirror    string
@@ -186,4 +187,22 @@ func (s *Space) refreshStsTokens(ctx context.Context) error {
 func (s *Space) getCloudApi() string {
 	var serverDomain = utils.DefaultValue(constants.DefaultCloudApiUrl, s.CloudApiMirror)
 	return strings.TrimRight(serverDomain, "/")
+}
+
+func (s *Space) getTags() []string {
+	var tags = []string{
+		fmt.Sprintf("repo-name=%s", s.RepoName),
+	}
+
+	if s.Operator != "" {
+		tags = append(tags, fmt.Sprintf("operator=%s", s.Operator))
+	}
+
+	if s.Files != nil && len(s.Files) > 0 {
+		tags = append(tags, "content-type=files")
+	} else {
+		tags = append(tags, "content-type=dirs")
+	}
+
+	return tags
 }

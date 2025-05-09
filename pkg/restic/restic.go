@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -38,6 +39,7 @@ const (
 	ERROR_MESSAGE_REPOSITORY_DOES_NOT_EXIST      RESTIC_ERROR_MESSAGE = "repository does not exist: unable to open config file"
 	ERROR_MESSAGE_BACKUP_CANCELED                RESTIC_ERROR_MESSAGE = "backup canceled"
 	ERROR_MESSAGE_RESTORE_CANCELED               RESTIC_ERROR_MESSAGE = "restore canceled"
+	ERROR_MESSAGE_FILES_NOT_FOUND                RESTIC_ERROR_MESSAGE = "does not match any files"
 )
 
 const (
@@ -75,9 +77,11 @@ type ResticOptions struct {
 	RegionId          string
 	SnapshotId        string
 	Path              string
+	Files             []string
 	LimitDownloadRate string
 	LimitUploadRate   string
 
+	Operator string
 	RepoEnvs *ResticEnvs
 }
 
@@ -228,8 +232,27 @@ func (r *Restic) Tag(snapshotId string, tags []string) error {
 	return nil
 }
 
-func (r *Restic) Backup(folder string, filePathPrefix string, tags []string, traceId string, progressChan chan float64) (*SummaryOutput, error) {
-	r.addCommand([]string{"backup", folder, r.opt.SetLimitUploadRate(), PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS}).
+func (r *Restic) Backup(folder string, files []string, filePathPrefix string, tags []string, traceId string, progressChan chan float64) (*SummaryOutput, error) {
+	var filesPath, err = r.formatBackupFiles(files)
+	if err != nil {
+		return nil, fmt.Errorf("[restic] invalid backup file list path, error: %v", err.Error())
+	}
+
+	var cmds = []string{"backup"}
+
+	if folder != "" {
+		cmds = append(cmds, folder)
+	}
+
+	if filesPath != nil {
+		for _, file := range filesPath {
+			cmds = append(cmds, "--files-from", file)
+		}
+	}
+
+	cmds = append(cmds, r.opt.SetLimitUploadRate(), PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS)
+
+	r.addCommand(cmds).
 		addExtended().
 		addRequestTimeout().
 		addTags(tags)
@@ -276,6 +299,8 @@ func (r *Restic) Backup(folder string, filePathPrefix string, tags []string, tra
 						errorMsg = ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE
 						c.Cancel()
 						return
+					case strings.Contains(msg, ERROR_MESSAGE_FILES_NOT_FOUND.Error()):
+						continue
 					default:
 						errorMsg = RESTIC_ERROR_MESSAGE(msg)
 						c.Cancel()
@@ -323,7 +348,7 @@ func (r *Restic) Backup(folder string, filePathPrefix string, tags []string, tra
 		}
 	}()
 
-	_, err := c.Run()
+	_, err = c.Run()
 	if err != nil {
 		return nil, err
 	}
@@ -581,8 +606,13 @@ func (r *Restic) GetSnapshots(tags []string) (*SnapshotList, error) {
 	return summary, nil
 }
 
-func (r *Restic) Restore(snapshotId string, uploadPath string, target string, progressChan chan float64) (*RestoreSummaryOutput, error) {
-	r.addCommand([]string{"restore", r.opt.SetLimitDownloadRate(), "-t", target, "-v=3", PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS, fmt.Sprintf("%s:%s", snapshotId, uploadPath)}).addExtended().addRequestTimeout()
+func (r *Restic) Restore(snapshotId string, subfolder string, target string, progressChan chan float64) (*RestoreSummaryOutput, error) {
+	if subfolder != "" {
+		subfolder = fmt.Sprintf("%s:%s", snapshotId, subfolder)
+	} else {
+		subfolder = snapshotId
+	}
+	r.addCommand([]string{"restore", r.opt.SetLimitDownloadRate(), "-t", target, "-v=3", PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS, subfolder}).addExtended().addRequestTimeout()
 
 	// var restoreCtx, cancel = context.WithCancel(r.ctx)
 	// defer cancel()
@@ -759,6 +789,23 @@ func (r *Restic) addExtended() *Restic {
 func (r *Restic) addRequestTimeout() *Restic {
 	r.args = append(r.args, "--stuck-request-timeout", "60s")
 	return r
+}
+
+func (r *Restic) formatBackupFiles(files []string) ([]string, error) {
+	if files == nil || len(files) == 0 {
+		return nil, nil
+	}
+
+	var res []string
+	for _, f := range files {
+		pt, err := filepath.Abs(f)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, pt)
+	}
+
+	return res, nil
 }
 
 var messagePool *statusMessagePool
