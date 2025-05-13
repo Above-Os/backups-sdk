@@ -8,6 +8,7 @@ import (
 var _ Option = &SpaceRestoreOption{}
 
 type SpaceRestoreOption struct {
+	RepoId            string
 	RepoName          string
 	RepoSuffix        string
 	SnapshotId        string
@@ -43,6 +44,7 @@ func (o *SpaceRestoreOption) AddFlags(cmd *cobra.Command) {
 var _ Option = &AwsRestoreOption{}
 
 type AwsRestoreOption struct {
+	RepoId            string
 	RepoName          string
 	SnapshotId        string
 	Endpoint          string
@@ -70,6 +72,7 @@ func (o *AwsRestoreOption) AddFlags(cmd *cobra.Command) {
 var _ Option = &TencentCloudRestoreOption{}
 
 type TencentCloudRestoreOption struct {
+	RepoId            string
 	RepoName          string
 	SnapshotId        string
 	Endpoint          string
@@ -97,6 +100,7 @@ func (o *TencentCloudRestoreOption) AddFlags(cmd *cobra.Command) {
 var _ Option = &FilesystemRestoreOption{}
 
 type FilesystemRestoreOption struct {
+	RepoId     string
 	RepoName   string
 	SnapshotId string
 	Endpoint   string

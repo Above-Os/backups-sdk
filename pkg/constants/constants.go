@@ -5,7 +5,7 @@ const (
 	DefaultLogsDir = "logs"
 
 	OlaresReleaseFile          = "/etc/olares/release"
-	OlaresStorageDefaultPrefix = "olares-backup/"
+	OlaresStorageDefaultPrefix = "olares-backups"
 
 	ENV_OLARES_BASE_DIR = "OLARES_BASE_DIR"
 	ENV_OLARES_VERSION  = "OLARES_VERSION"

@@ -53,6 +53,7 @@ func (s *StatsService) Stats() (*restic.StatsContainer, error) {
 	var service Location
 	if s.option.Space != nil {
 		service = &space.Space{
+			RepoId:         s.option.Space.RepoId,
 			RepoName:       s.option.Space.RepoName,
 			OlaresDid:      s.option.Space.OlaresDid,
 			AccessToken:    s.option.Space.AccessToken,
@@ -65,6 +66,7 @@ func (s *StatsService) Stats() (*restic.StatsContainer, error) {
 		}
 	} else if s.option.Aws != nil {
 		service = &s3.Aws{
+			RepoId:          s.option.Aws.RepoId,
 			RepoName:        s.option.Aws.RepoName,
 			Endpoint:        s.option.Aws.Endpoint,
 			AccessKey:       s.option.Aws.AccessKey,
@@ -74,6 +76,7 @@ func (s *StatsService) Stats() (*restic.StatsContainer, error) {
 		}
 	} else if s.option.TencentCloud != nil {
 		service = &cos.TencentCloud{
+			RepoId:          s.option.TencentCloud.RepoId,
 			RepoName:        s.option.TencentCloud.RepoName,
 			Endpoint:        s.option.TencentCloud.Endpoint,
 			CloudName:       constants.CloudTencentName,
@@ -84,6 +87,7 @@ func (s *StatsService) Stats() (*restic.StatsContainer, error) {
 		}
 	} else if s.option.Filesystem != nil {
 		service = &filesystem.Filesystem{
+			RepoId:      s.option.Filesystem.RepoId,
 			RepoName:    s.option.Filesystem.RepoName,
 			Endpoint:    s.option.Filesystem.Endpoint,
 			Password:    password,

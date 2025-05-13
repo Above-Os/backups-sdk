@@ -8,6 +8,7 @@ import (
 var _ Option = &SpaceSnapshotsOption{}
 
 type SpaceSnapshotsOption struct {
+	RepoId         string
 	RepoName       string
 	OlaresDid      string
 	AccessToken    string
@@ -35,6 +36,7 @@ func (o *SpaceSnapshotsOption) AddFlags(cmd *cobra.Command) {
 var _ Option = &AwsSnapshotsOption{}
 
 type AwsSnapshotsOption struct {
+	RepoId          string
 	RepoName        string
 	Endpoint        string
 	AccessKey       string
@@ -56,6 +58,7 @@ func (o *AwsSnapshotsOption) AddFlags(cmd *cobra.Command) {
 var _ Option = &TencentCloudSnapshotsOption{}
 
 type TencentCloudSnapshotsOption struct {
+	RepoId          string
 	RepoName        string
 	Endpoint        string
 	AccessKey       string
@@ -77,6 +80,7 @@ func (o *TencentCloudSnapshotsOption) AddFlags(cmd *cobra.Command) {
 var _ Option = &FilesystemSnapshotsOption{}
 
 type FilesystemSnapshotsOption struct {
+	RepoId   string
 	RepoName string
 	Endpoint string
 }

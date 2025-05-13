@@ -9,14 +9,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Space) Snapshots(ctx context.Context) error {
+func (s *Space) Snapshots(ctx context.Context) (*restic.SnapshotList, error) {
 	if err := s.getStsToken(ctx); err != nil {
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	storageInfo, err := s.FormatRepository()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var envs = s.GetEnv(storageInfo.Url)
@@ -29,14 +29,14 @@ func (s *Space) Snapshots(ctx context.Context) error {
 
 	r, err := restic.NewRestic(context.Background(), opts)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	snapshots, err := r.GetSnapshots(nil)
 	if err != nil {
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 	snapshots.PrintTable()
 
-	return nil
+	return snapshots, nil
 }

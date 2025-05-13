@@ -54,6 +54,7 @@ func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone fl
 
 		var envs = s.GetEnv(storageInfo.Url)
 		var opts = &restic.ResticOptions{
+			RepoId:          s.RepoId,
 			RepoName:        s.RepoName,
 			RepoSuffix:      repoSuffix,
 			CloudName:       s.CloudName,

@@ -16,7 +16,7 @@ import (
 type Location interface {
 	Backup(ctx context.Context, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error)
 	Restore(ctx context.Context, progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error)
-	Snapshots(ctx context.Context) error
+	Snapshots(ctx context.Context) (*restic.SnapshotList, error)
 	Stats(ctx context.Context) (*restic.StatsContainer, error)
 	Regions() ([]map[string]string, error)
 
@@ -183,21 +183,21 @@ func (h *BaseHandler) Restore(ctx context.Context, progressCallback func(percent
 	return
 }
 
-func (h *BaseHandler) Snapshots(ctx context.Context) error {
+func (h *BaseHandler) Snapshots(ctx context.Context) (*restic.SnapshotList, error) {
 	logger.Debugf("snapshots env vars: %s", utils.Base64encode([]byte(h.opts.RepoEnvs.String())))
 
 	r, err := restic.NewRestic(ctx, h.opts)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	snapshots, err := r.GetSnapshots(nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	snapshots.PrintTable()
 
-	return nil
+	return snapshots, nil
 }
 
 func (h *BaseHandler) Stats(ctx context.Context) (*restic.StatsContainer, error) {
@@ -217,6 +217,7 @@ func (h *BaseHandler) Stats(ctx context.Context) (*restic.StatsContainer, error)
 
 func (h *BaseHandler) getTags() []string {
 	var tags = []string{
+		fmt.Sprintf("repo-id=%s", h.opts.RepoId),
 		fmt.Sprintf("repo-name=%s", h.opts.RepoName),
 	}
 

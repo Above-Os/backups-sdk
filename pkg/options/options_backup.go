@@ -8,6 +8,7 @@ import (
 var _ Option = &SpaceBackupOption{}
 
 type SpaceBackupOption struct {
+	RepoId          string   `json:"repo_id"`
 	RepoName        string   `json:"repo_name"`
 	Path            string   `json:"path"`
 	Files           []string `json:"files"`
@@ -41,6 +42,7 @@ func (o *SpaceBackupOption) AddFlags(cmd *cobra.Command) {
 var _ Option = &AwsBackupOption{}
 
 type AwsBackupOption struct {
+	RepoId          string
 	RepoName        string
 	Endpoint        string
 	AccessKey       string
@@ -70,6 +72,7 @@ func (o *AwsBackupOption) AddFlags(cmd *cobra.Command) {
 var _ Option = &TencentCloudBackupOption{}
 
 type TencentCloudBackupOption struct {
+	RepoId          string
 	RepoName        string
 	Endpoint        string
 	AccessKey       string
@@ -99,6 +102,7 @@ func (o *TencentCloudBackupOption) AddFlags(cmd *cobra.Command) {
 var _ Option = &FilesystemBackupOption{}
 
 type FilesystemBackupOption struct {
+	RepoId   string
 	RepoName string
 	Endpoint string
 	Path     string

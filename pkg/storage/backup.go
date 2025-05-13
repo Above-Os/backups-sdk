@@ -57,6 +57,7 @@ func (b *BackupService) Backup(progressCallback func(percentDone float64)) (*res
 	var service Location
 	if b.option.Space != nil {
 		service = &space.Space{
+			RepoId:          b.option.Space.RepoId,
 			RepoName:        b.option.Space.RepoName,
 			OlaresDid:       b.option.Space.OlaresDid,
 			AccessToken:     b.option.Space.AccessToken,
@@ -73,6 +74,7 @@ func (b *BackupService) Backup(progressCallback func(percentDone float64)) (*res
 		}
 	} else if b.option.Aws != nil {
 		service = &s3.Aws{
+			RepoId:          b.option.Aws.RepoId,
 			RepoName:        b.option.Aws.RepoName,
 			Endpoint:        b.option.Aws.Endpoint,
 			AccessKey:       b.option.Aws.AccessKey,
@@ -86,6 +88,7 @@ func (b *BackupService) Backup(progressCallback func(percentDone float64)) (*res
 		}
 	} else if b.option.TencentCloud != nil {
 		service = &cos.TencentCloud{
+			RepoId:          b.option.TencentCloud.RepoId,
 			RepoName:        b.option.TencentCloud.RepoName,
 			Endpoint:        b.option.TencentCloud.Endpoint,
 			AccessKey:       b.option.TencentCloud.AccessKey,
@@ -99,6 +102,7 @@ func (b *BackupService) Backup(progressCallback func(percentDone float64)) (*res
 		}
 	} else if b.option.Filesystem != nil {
 		service = &filesystem.Filesystem{
+			RepoId:      b.option.Filesystem.RepoId,
 			RepoName:    b.option.Filesystem.RepoName,
 			Endpoint:    b.option.Filesystem.Endpoint,
 			Path:        b.option.Filesystem.Path,

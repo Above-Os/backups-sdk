@@ -2,9 +2,11 @@ package filesystem
 
 import (
 	"context"
+	"fmt"
 	"path"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/constants"
+	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/model"
@@ -12,6 +14,7 @@ import (
 )
 
 type Filesystem struct {
+	RepoId      string
 	RepoName    string
 	SnapshotId  string
 	Endpoint    string
@@ -30,12 +33,15 @@ func (f *Filesystem) Backup(ctx context.Context, progressCallback func(percentDo
 
 	var envs = f.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
+		RepoId:   f.RepoId,
 		RepoName: f.RepoName,
 		Path:     f.Path,
 		Files:    f.Files,
 		Operator: f.Operator,
 		RepoEnvs: envs,
 	}
+
+	logger.Debugf("fs backup env vars: %s", utils.Base64encode([]byte(envs.String())))
 
 	f.BaseHandler.SetOptions(opts)
 	backupSummary, err = f.BaseHandler.Backup(ctx, progressCallback)
@@ -49,27 +55,33 @@ func (f *Filesystem) Restore(ctx context.Context, progressCallback func(percentD
 	}
 	var envs = f.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
+		RepoId:     f.RepoId,
 		RepoName:   f.RepoName,
 		SnapshotId: f.SnapshotId,
 		RepoEnvs:   envs,
 		Path:       f.Path,
 	}
 
+	logger.Debugf("fs restore env vars: %s", utils.Base64encode([]byte(envs.String())))
+
 	f.BaseHandler.SetOptions(opts)
 	return f.BaseHandler.Restore(ctx, progressCallback)
 }
 
-func (f *Filesystem) Snapshots(ctx context.Context) error {
+func (f *Filesystem) Snapshots(ctx context.Context) (*restic.SnapshotList, error) {
 	storageInfo, err := f.FormatRepository()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var envs = f.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
+		RepoId:   f.RepoId,
 		RepoName: f.RepoName,
 		RepoEnvs: envs,
 	}
+
+	logger.Debugf("fs snapshots env vars: %s", utils.Base64encode([]byte(envs.String())))
 
 	f.BaseHandler.SetOptions(opts)
 	return f.BaseHandler.Snapshots(ctx)
@@ -83,9 +95,12 @@ func (f *Filesystem) Stats(ctx context.Context) (*restic.StatsContainer, error) 
 
 	var envs = f.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
+		RepoId:   f.RepoId,
 		RepoName: f.RepoName,
 		RepoEnvs: envs,
 	}
+
+	logger.Debugf("fs stats env vars: %s", utils.Base64encode([]byte(envs.String())))
 
 	f.BaseHandler.SetOptions(opts)
 	return f.BaseHandler.Stats(ctx)
@@ -97,7 +112,7 @@ func (f *Filesystem) Regions() ([]map[string]string, error) {
 
 func (f *Filesystem) GetEnv(repository string) *restic.ResticEnvs {
 	var envs = &restic.ResticEnvs{
-		RESTIC_REPOSITORY: path.Join(f.Endpoint, f.RepoName),
+		RESTIC_REPOSITORY: repository,
 		RESTIC_PASSWORD:   f.Password,
 	}
 	return envs
@@ -110,7 +125,7 @@ func (f *Filesystem) FormatRepository() (storageInfo *model.StorageInfo, err err
 
 	storageInfo = &model.StorageInfo{
 		Location:  "filesystem",
-		Url:       f.Endpoint,
+		Url:       path.Join(f.Endpoint, constants.OlaresStorageDefaultPrefix, fmt.Sprintf("%s-%s", f.RepoName, f.RepoId)),
 		CloudName: constants.CloudFilesystemName,
 		RegionId:  "",
 		Bucket:    "",
@@ -121,7 +136,7 @@ func (f *Filesystem) FormatRepository() (storageInfo *model.StorageInfo, err err
 }
 
 func (f *Filesystem) setRepoDir() error {
-	var p = path.Join(f.Endpoint, f.RepoName)
+	var p = path.Join(f.Endpoint, constants.OlaresStorageDefaultPrefix, fmt.Sprintf("%s-%s", f.RepoName, f.RepoId))
 	if !utils.IsExist(p) {
 		if err := utils.CreateDir(p); err != nil {
 			return err

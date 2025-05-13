@@ -15,6 +15,7 @@ import (
 )
 
 type TencentCloud struct {
+	RepoId            string
 	RepoName          string
 	SnapshotId        string
 	Endpoint          string
@@ -39,6 +40,7 @@ func (c *TencentCloud) Backup(ctx context.Context, progressCallback func(percent
 
 	var envs = c.GetEnv(storageInfo.Url) // cos backup
 	var opts = &restic.ResticOptions{
+		RepoId:          c.RepoId,
 		RepoName:        c.RepoName,
 		CloudName:       c.CloudName,
 		RegionId:        c.RegionId,
@@ -65,6 +67,7 @@ func (c *TencentCloud) Restore(ctx context.Context, progressCallback func(percen
 
 	var envs = c.GetEnv(storageInfo.Url) // cos restore
 	var opts = &restic.ResticOptions{
+		RepoId:            c.RepoId,
 		RepoName:          c.RepoName,
 		CloudName:         c.CloudName,
 		RegionId:          c.RegionId,
@@ -80,19 +83,22 @@ func (c *TencentCloud) Restore(ctx context.Context, progressCallback func(percen
 	return c.BaseHandler.Restore(ctx, progressCallback)
 }
 
-func (c *TencentCloud) Snapshots(ctx context.Context) error {
+func (c *TencentCloud) Snapshots(ctx context.Context) (*restic.SnapshotList, error) {
 	storageInfo, err := c.FormatRepository()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var envs = c.GetEnv(storageInfo.Url) // cos snapshot
 	var opts = &restic.ResticOptions{
+		RepoId:    c.RepoId,
 		RepoName:  c.RepoName,
 		CloudName: c.CloudName,
 		RegionId:  c.RegionId,
 		RepoEnvs:  envs,
 	}
+
+	logger.Debugf("cos snapshots env vars: %s", utils.Base64encode([]byte(envs.String())))
 
 	c.BaseHandler.SetOptions(opts)
 	return c.BaseHandler.Snapshots(ctx)
@@ -106,11 +112,14 @@ func (c *TencentCloud) Stats(ctx context.Context) (*restic.StatsContainer, error
 
 	var envs = c.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
+		RepoId:    c.RepoId,
 		RepoName:  c.RepoName,
 		CloudName: c.CloudName,
 		RegionId:  c.RegionId,
 		RepoEnvs:  envs,
 	}
+
+	logger.Debugf("cos stats env vars: %s", utils.Base64encode([]byte(envs.String())))
 
 	c.BaseHandler.SetOptions(opts)
 	return c.BaseHandler.Stats(ctx)
@@ -168,7 +177,7 @@ func (c *TencentCloud) FormatRepository() (storageInfo *model.StorageInfo, err e
 	}
 	var repoRegion = repoBaseSplit[1]
 
-	var repository = fmt.Sprintf("s3:https://cos.%s.%s/%s/%s%s", repoRegion, domainName, repoBucket, repoPrefix, c.RepoName)
+	var repository = fmt.Sprintf("s3:https://cos.%s.%s/%s/%s/%s-%s", repoRegion, domainName, repoBucket, repoPrefix, c.RepoName, c.RepoId)
 
 	c.CloudName = constants.CloudTencentName
 	c.RegionId = repoRegion
