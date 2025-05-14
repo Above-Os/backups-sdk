@@ -42,6 +42,7 @@ func (s *Space) Restore(ctx context.Context, progressCallback func(percentDone f
 	for {
 		var envs = s.GetEnv(storageInfo.Url)
 		var opts = &restic.ResticOptions{
+			RepoId:            s.RepoId,
 			RepoName:          s.RepoName,
 			CloudName:         s.CloudName,
 			RegionId:          s.RegionId,

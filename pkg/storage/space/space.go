@@ -98,6 +98,7 @@ func (s *Space) Stats(ctx context.Context) (*restic.StatsContainer, error) {
 
 	var envs = s.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
+		RepoId:    s.RepoId,
 		RepoName:  s.RepoName,
 		CloudName: s.CloudName,
 		RegionId:  s.RegionId,
@@ -130,7 +131,7 @@ func (s *Space) GetEnv(repository string) *restic.ResticEnvs {
 }
 
 func (s *Space) getCosRepository() (storageInfo *model.StorageInfo, err error) {
-	var repoPrefix = fmt.Sprintf("%s/%s/%s-%s", s.StsToken.Prefix, constants.OlaresStorageDefaultPrefix, s.RepoName, s.RepoId)
+	var repoPrefix = fmt.Sprintf("%s/%s/%s-%s", s.StsToken.Prefix, constants.OlaresStorageDefaultPrefix, utils.EncodeURLPart(s.RepoName), s.RepoId)
 	var repository = fmt.Sprintf("s3:https://cos.%s.%s/%s/%s", s.RegionId, constants.StorageTencentDoman, s.StsToken.Bucket, repoPrefix)
 
 	storageInfo = &model.StorageInfo{
@@ -146,7 +147,7 @@ func (s *Space) getCosRepository() (storageInfo *model.StorageInfo, err error) {
 }
 
 func (s *Space) getDefaultRepository() (storageInfo *model.StorageInfo, err error) {
-	var repoPrefix = fmt.Sprintf("%s/%s/%s-%s", s.StsToken.Prefix, constants.OlaresStorageDefaultPrefix, s.RepoName, s.RepoId)
+	var repoPrefix = fmt.Sprintf("%s/%s/%s-%s", s.StsToken.Prefix, constants.OlaresStorageDefaultPrefix, utils.EncodeURLPart(s.RepoName), s.RepoId)
 	var domain = fmt.Sprintf("%s.%s", s.StsToken.Region, constants.StorageS3Domain)
 	var repository = fmt.Sprintf("s3:https://s3.%s/%s/%s", domain, s.StsToken.Bucket, repoPrefix)
 
@@ -192,6 +193,7 @@ func (s *Space) getCloudApi() string {
 
 func (s *Space) getTags() []string {
 	var tags = []string{
+		fmt.Sprintf("repo-id=%s", s.RepoId),
 		fmt.Sprintf("repo-name=%s", s.RepoName),
 	}
 

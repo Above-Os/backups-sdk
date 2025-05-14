@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/constants"
@@ -134,37 +135,53 @@ func (s *Aws) FormatRepository() (storageInfo *model.StorageInfo, err error) {
 		return
 	}
 
-	var domainName = constants.StorageS3Domain
-	var endpoint = strings.TrimPrefix(s.Endpoint, "https://")
-	endpoint = strings.TrimRight(endpoint, "/")
-	if strings.EqualFold(endpoint, "") {
-		err = fmt.Errorf("s3 endpoint %s is invalid", endpoint)
-		return
+	var endpoint = strings.TrimRight(s.Endpoint, "/")
+
+	s3UrlInfo, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, err
 	}
 
-	var repoSplit = strings.SplitN(endpoint, "/", 2)
-	if repoSplit == nil || len(repoSplit) < 1 {
-		return nil, fmt.Errorf("s3 endpoint %v is invalid", repoSplit)
-	}
-	var repoBase = repoSplit[0]
-	var repoPrefix = constants.OlaresStorageDefaultPrefix
-	if len(repoSplit) >= 2 {
-		repoPrefix = fmt.Sprintf("%s/%s", repoSplit[1], constants.OlaresStorageDefaultPrefix)
+	var host = s3UrlInfo.Host
+	var hosts = strings.Split(host, ".")
+	if len(hosts) < 4 {
+		return nil, fmt.Errorf("host invalid, host: %s", host)
 	}
 
-	var repoBaseSplit = strings.SplitN(repoBase, ".", 3)
-	if len(repoBaseSplit) != 3 {
-		err = fmt.Errorf("s3 endpoint %v is invalid", repoBaseSplit)
-		return
+	if !strings.Contains(host, constants.StorageS3Domain) {
+		return nil, fmt.Errorf("host is not s3 format, host: %s", host)
 	}
-	if repoBaseSplit[2] != domainName {
-		err = fmt.Errorf("s3 endpoint %s is not %s", repoBaseSplit[2], domainName)
-		return
-	}
-	var bucket = repoBaseSplit[0]
-	var region = repoBaseSplit[1]
 
-	var repository = fmt.Sprintf("s3:https://s3.%s.%s/%s/%s/%s-%s", region, domainName, bucket, repoPrefix, s.RepoName, s.RepoId)
+	var region, bucket, prefix string
+	path := strings.TrimLeft(s3UrlInfo.Path, "/")
+	paths := []string{}
+	if path != "" {
+		paths = strings.Split(path, "/")
+	}
+
+	if hosts[0] == "s3" {
+		region = hosts[1]
+		if len(paths) == 0 {
+			return nil, fmt.Errorf("bucket not exists in path: %s", path)
+		}
+		bucket = paths[0]
+		if len(paths) > 1 {
+			prefix = strings.Join(paths[1:], "/")
+		}
+	} else {
+		bucket = hosts[0]
+		region = hosts[1]
+
+		prefix = path
+	}
+
+	if prefix == "" {
+		prefix = constants.OlaresStorageDefaultPrefix
+	} else {
+		prefix = fmt.Sprintf("%s/%s", prefix, constants.OlaresStorageDefaultPrefix)
+	}
+
+	repository := fmt.Sprintf("s3:%s://s3.%s.amazonaws.com/%s/%s/%s-%s", s3UrlInfo.Scheme, region, bucket, prefix, utils.EncodeURLPart(s.RepoName), s.RepoId)
 
 	storageInfo = &model.StorageInfo{
 		Location:  "awss3",
@@ -172,7 +189,7 @@ func (s *Aws) FormatRepository() (storageInfo *model.StorageInfo, err error) {
 		CloudName: constants.CloudAWSName,
 		RegionId:  region,
 		Bucket:    bucket,
-		Prefix:    repoPrefix,
+		Prefix:    prefix,
 	}
 
 	return

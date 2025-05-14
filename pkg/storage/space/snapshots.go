@@ -21,6 +21,7 @@ func (s *Space) Snapshots(ctx context.Context) (*restic.SnapshotList, error) {
 
 	var envs = s.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
+		RepoId:          s.RepoId,
 		RepoName:        s.RepoName,
 		RepoEnvs:        envs,
 		LimitUploadRate: s.LimitUploadRate,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/constants"
@@ -145,50 +146,49 @@ func (c *TencentCloud) FormatRepository() (storageInfo *model.StorageInfo, err e
 		return
 	}
 
-	var domainName = constants.StorageTencentDoman
-	var endpoint = strings.TrimPrefix(c.Endpoint, "https://")
-	endpoint = strings.TrimRight(endpoint, "/")
-	if strings.EqualFold(endpoint, "") {
-		err = fmt.Errorf("cos endpoint %s is invalid", endpoint)
-		return
+	var endpoint = strings.TrimRight(c.Endpoint, "/")
+
+	cosUrlInfo, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, err
 	}
 
-	var repoSplit = strings.Split(endpoint, "/")
-	if repoSplit == nil || len(repoSplit) < 2 {
-		err = fmt.Errorf("cos endpoint %v is invalid", repoSplit)
-		return
+	var host = cosUrlInfo.Host
+	var hosts = strings.Split(host, ".")
+	if len(hosts) != 4 {
+		return nil, fmt.Errorf("host invalid, host: %s", host)
 	}
 
-	var repoBase = repoSplit[0]
-	var repoBucket = repoSplit[1]
-	var repoPrefix = constants.OlaresStorageDefaultPrefix
-	if len(repoSplit) > 2 { // todo unittest
-		repoPrefix = fmt.Sprintf("%s/%s", strings.Join(repoSplit[2:], "/"), constants.OlaresStorageDefaultPrefix)
+	if !strings.Contains(host, constants.StorageTencentDoman) {
+		return nil, fmt.Errorf("host is not cos format, host: %s", host)
 	}
 
-	var repoBaseSplit = strings.SplitN(repoBase, ".", 3)
-	if repoBaseSplit == nil || len(repoBaseSplit) != 3 {
-		err = fmt.Errorf("cos endpoint %v is invalid", repoBaseSplit)
-		return
-	}
-	if repoBaseSplit[0] != "cos" || repoBaseSplit[2] != domainName {
-		err = fmt.Errorf("cos endpoint %v is not %s", repoBaseSplit, domainName)
-		return
-	}
-	var repoRegion = repoBaseSplit[1]
+	var region = hosts[1]
 
-	var repository = fmt.Sprintf("s3:https://cos.%s.%s/%s/%s/%s-%s", repoRegion, domainName, repoBucket, repoPrefix, c.RepoName, c.RepoId)
+	var path = strings.TrimLeft(cosUrlInfo.Path, "/")
+	var paths = strings.Split(path, "/")
+	if len(paths) == 0 {
+		return nil, fmt.Errorf("bucket not exists, path: %s", path)
+	}
+
+	var bucket = paths[0]
+	var prefix string = constants.OlaresStorageDefaultPrefix
+	if len(paths) > 1 {
+		prefix = fmt.Sprintf("%s/%s", strings.Join(paths[1:], "/"), constants.OlaresStorageDefaultPrefix)
+	}
+
+	var repository = fmt.Sprintf("s3:%s://%s/%s/%s/%s-%s", cosUrlInfo.Scheme, cosUrlInfo.Host, bucket, prefix, utils.EncodeURLPart(c.RepoName), c.RepoId)
 
 	c.CloudName = constants.CloudTencentName
-	c.RegionId = repoRegion
+	c.RegionId = region
 
 	storageInfo = &model.StorageInfo{
 		Location:  "tencentcloud",
 		Url:       repository,
 		CloudName: constants.CloudTencentName,
-		RegionId:  repoRegion,
-		Bucket:    repoBucket,
-		Prefix:    repoPrefix,
+		RegionId:  region,
+		Bucket:    bucket,
+		Prefix:    prefix,
 	}
 
 	return

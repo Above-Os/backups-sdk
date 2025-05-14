@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"net/url"
 	"strings"
 	"syscall"
 
@@ -58,4 +59,17 @@ func GetSuffix(c string, s string) (string, error) {
 		return "", fmt.Errorf("get space sts prefix invalid, prefix: %s", c)
 	}
 	return r[1], nil
+}
+
+func EncodeURLPart(raw string) string {
+	var builder strings.Builder
+	for _, r := range raw {
+		switch r {
+		case '<', '>', '{', '}', ' ', '"', '#', '%', '|', '\\', '^', '~', '[', ']', '`':
+			builder.WriteString(url.QueryEscape(string(r)))
+		default:
+			builder.WriteRune(r)
+		}
+	}
+	return builder.String()
 }
