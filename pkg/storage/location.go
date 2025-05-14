@@ -195,7 +195,9 @@ func (h *BaseHandler) Snapshots(ctx context.Context) (*restic.SnapshotList, erro
 	if err != nil {
 		return nil, err
 	}
-	snapshots.PrintTable()
+	if h.opts.Operator == constants.StorageOperatorCli {
+		snapshots.PrintTable()
+	}
 
 	return snapshots, nil
 }

@@ -20,6 +20,7 @@ import (
 type SnapshotsOption struct {
 	Basedir      string
 	Password     string
+	Operator     string
 	Logger       *zap.SugaredLogger
 	Space        *options.SpaceSnapshotsOption
 	Aws          *options.AwsSnapshotsOption
