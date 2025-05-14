@@ -2,11 +2,13 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"bytetrade.io/web3os/backups-sdk/pkg/options"
+	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/cos"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/filesystem"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/s3"
@@ -26,27 +28,34 @@ type SnapshotsOption struct {
 }
 
 type SnapshotsService struct {
-	option *SnapshotsOption
+	password string
+	option   *SnapshotsOption
 }
 
 func NewSnapshotsService(option *SnapshotsOption) *SnapshotsService {
 
 	var snapshotsService = &SnapshotsService{
-		option: option,
+		password: option.Password,
+		option:   option,
 	}
 
 	return snapshotsService
 }
 
-func (s *SnapshotsService) Snapshots() {
-	password, err := utils.InputPasswordWithConfirm(false)
-	if err != nil {
-		panic(err)
+func (s *SnapshotsService) Snapshots() (*restic.SnapshotList, error) {
+	var password = s.password
+	var err error
+	if password == "" {
+		password, err = utils.InputPasswordWithConfirm(true)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	var service Location
 	if s.option.Space != nil {
 		service = &space.Space{
+			RepoId:         s.option.Space.RepoId,
 			RepoName:       s.option.Space.RepoName,
 			OlaresDid:      s.option.Space.OlaresDid,
 			AccessToken:    s.option.Space.AccessToken,
@@ -59,6 +68,7 @@ func (s *SnapshotsService) Snapshots() {
 		}
 	} else if s.option.Aws != nil {
 		service = &s3.Aws{
+			RepoId:          s.option.Aws.RepoId,
 			RepoName:        s.option.Aws.RepoName,
 			Endpoint:        s.option.Aws.Endpoint,
 			AccessKey:       s.option.Aws.AccessKey,
@@ -68,6 +78,7 @@ func (s *SnapshotsService) Snapshots() {
 		}
 	} else if s.option.TencentCloud != nil {
 		service = &cos.TencentCloud{
+			RepoId:          s.option.TencentCloud.RepoId,
 			RepoName:        s.option.TencentCloud.RepoName,
 			Endpoint:        s.option.TencentCloud.Endpoint,
 			AccessKey:       s.option.TencentCloud.AccessKey,
@@ -77,6 +88,7 @@ func (s *SnapshotsService) Snapshots() {
 		}
 	} else if s.option.Filesystem != nil {
 		service = &filesystem.Filesystem{
+			RepoId:      s.option.Filesystem.RepoId,
 			RepoName:    s.option.Filesystem.RepoName,
 			Endpoint:    s.option.Filesystem.Endpoint,
 			Password:    password,
@@ -84,13 +96,16 @@ func (s *SnapshotsService) Snapshots() {
 		}
 	} else {
 		logger.Fatalf("There is no suitable recovery method.")
-		return
+		return nil, fmt.Errorf("There is no suitable recovery method.")
 	}
 
 	var ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	if err := service.Snapshots(ctx); err != nil {
+	result, err := service.Snapshots(ctx)
+	if err != nil {
 		logger.Errorf("List Spanshots error: %v", err)
+		return nil, err
 	}
+	return result, nil
 }

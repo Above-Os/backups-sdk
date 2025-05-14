@@ -63,3 +63,9 @@ func NewStatsService(option *storage.SnapshotsOption) *storage.StatsService {
 
 	return storage.NewStatsService(option)
 }
+
+func NewSnapshotsService(option *storage.SnapshotsOption) *storage.SnapshotsService {
+	logger.SetLogger(option.Logger)
+
+	return storage.NewSnapshotsService(option)
+}

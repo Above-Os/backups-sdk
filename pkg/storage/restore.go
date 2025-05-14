@@ -54,6 +54,7 @@ func (r *RestoreService) Restore(progressCallback func(percentDone float64)) (re
 
 	if r.option.Space != nil {
 		service = &space.Space{
+			RepoId:   r.option.Space.RepoId,
 			RepoName: r.option.Space.RepoName,
 			// When restoring from BackupURL on a new machine, it is necessary to extract the Suffix from the Prefix of the backup in the BackupURL
 			RepoSuffix:        r.option.Space.RepoSuffix,
@@ -72,6 +73,7 @@ func (r *RestoreService) Restore(progressCallback func(percentDone float64)) (re
 		}
 	} else if r.option.Aws != nil {
 		service = &s3.Aws{
+			RepoId:            r.option.Aws.RepoId,
 			RepoName:          r.option.Aws.RepoName,
 			SnapshotId:        r.option.Aws.SnapshotId,
 			Endpoint:          r.option.Aws.Endpoint,
@@ -85,6 +87,7 @@ func (r *RestoreService) Restore(progressCallback func(percentDone float64)) (re
 		}
 	} else if r.option.TencentCloud != nil {
 		service = &cos.TencentCloud{
+			RepoId:            r.option.TencentCloud.RepoId,
 			RepoName:          r.option.TencentCloud.RepoName,
 			SnapshotId:        r.option.TencentCloud.SnapshotId,
 			Endpoint:          r.option.TencentCloud.Endpoint,
@@ -99,6 +102,7 @@ func (r *RestoreService) Restore(progressCallback func(percentDone float64)) (re
 
 	} else if r.option.Filesystem != nil {
 		service = &filesystem.Filesystem{
+			RepoId:      r.option.Filesystem.RepoId,
 			RepoName:    r.option.Filesystem.RepoName,
 			SnapshotId:  r.option.Filesystem.SnapshotId,
 			Endpoint:    r.option.Filesystem.Endpoint,
