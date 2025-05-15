@@ -62,14 +62,5 @@ func GetSuffix(c string, s string) (string, error) {
 }
 
 func EncodeURLPart(raw string) string {
-	var builder strings.Builder
-	for _, r := range raw {
-		switch r {
-		case '<', '>', '{', '}', ' ', '"', '#', '%', '|', '\\', '^', '~', '[', ']', '`':
-			builder.WriteString(url.QueryEscape(string(r)))
-		default:
-			builder.WriteRune(r)
-		}
-	}
-	return builder.String()
+	return url.PathEscape(raw)
 }

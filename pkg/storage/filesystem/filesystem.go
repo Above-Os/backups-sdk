@@ -125,7 +125,7 @@ func (f *Filesystem) FormatRepository() (storageInfo *model.StorageInfo, err err
 
 	storageInfo = &model.StorageInfo{
 		Location:  "filesystem",
-		Url:       path.Join(f.Endpoint, constants.OlaresStorageDefaultPrefix, fmt.Sprintf("%s-%s", utils.EncodeURLPart(f.RepoName), f.RepoId)),
+		Url:       path.Join(f.Endpoint, constants.OlaresStorageDefaultPrefix, fmt.Sprintf("%s-%s", f.RepoName, f.RepoId)),
 		CloudName: constants.CloudFilesystemName,
 		RegionId:  "",
 		Bucket:    "",
@@ -136,7 +136,7 @@ func (f *Filesystem) FormatRepository() (storageInfo *model.StorageInfo, err err
 }
 
 func (f *Filesystem) setRepoDir() error {
-	var p = path.Join(f.Endpoint, constants.OlaresStorageDefaultPrefix, fmt.Sprintf("%s-%s", utils.EncodeURLPart(f.RepoName), f.RepoId))
+	var p = path.Join(f.Endpoint, constants.OlaresStorageDefaultPrefix, fmt.Sprintf("%s-%s", f.RepoName, f.RepoId))
 	if !utils.IsExist(p) {
 		if err := utils.CreateDir(p); err != nil {
 			return err
