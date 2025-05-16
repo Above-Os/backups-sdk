@@ -174,7 +174,7 @@ func (h *BaseHandler) Restore(ctx context.Context, progressCallback func(percent
 
 	restoreSummary, err = re.Restore(snapshotId, uploadPath, path, progressChan)
 	if err != nil {
-		err = fmt.Errorf("restore %s snapshot %s error: %v", h.opts.RepoName, h.opts.SnapshotId, err)
+		logger.Errorf("restore %s snapshot %s error: %v", h.opts.RepoName, h.opts.SnapshotId, err)
 		return
 	}
 

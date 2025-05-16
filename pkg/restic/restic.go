@@ -333,6 +333,16 @@ func (r *Restic) Backup(folder string, files []string, filePathPrefix string, ta
 						}
 						prevPercent = status.PercentDone
 					}
+				case "error":
+					errObj := new(ErrorUpdate)
+					if err := json.Unmarshal(res, &errObj); err != nil {
+						errorMsg = RESTIC_ERROR_MESSAGE(err.Error())
+					} else {
+						errorMsg = RESTIC_ERROR_MESSAGE(errObj.Error.Message)
+					}
+					messagePool.Put(status)
+					c.Cancel()
+					return
 				case "summary":
 					if err := json.Unmarshal(res, &summary); err != nil {
 						logger.Errorf("[restic] backup %s error summary unmarshal message: %s, traceId: %s", r.opt.RepoName, string(res), traceId)
@@ -700,10 +710,21 @@ func (r *Restic) Restore(snapshotId string, subfolder string, target string, pro
 					rvu := new(RestoreVerboseUpdate)
 					if err := json.Unmarshal(res, &rvu); err != nil {
 						errorMsg = RESTIC_ERROR_MESSAGE(err.Error())
+						restoreMessagePool.Put(status)
 						c.Cancel()
 						return
 					}
 					logger.Infof(PRINT_RESTORE_ITEM, rvu.Item, utils.FormatBytes(rvu.Size))
+				case "error":
+					errObj := new(ErrorUpdate)
+					if err := json.Unmarshal(res, &errObj); err != nil {
+						errorMsg = RESTIC_ERROR_MESSAGE(err.Error())
+					} else {
+						errorMsg = RESTIC_ERROR_MESSAGE(errObj.Error.Message)
+					}
+					restoreMessagePool.Put(status)
+					c.Cancel()
+					return
 				case "summary":
 					if err := json.Unmarshal(res, &summary); err != nil {
 						logger.Debugf("[restic] restore %s error summary unmarshal message: %s", r.opt.RepoName, string(res))
