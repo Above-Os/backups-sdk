@@ -43,3 +43,7 @@ func IsExist(path string) bool {
 func Lookup(command string) (string, error) {
 	return exec.LookPath(command)
 }
+
+func DeleteFile(path string) error {
+	return os.Remove(path)
+}
