@@ -107,20 +107,33 @@ func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone fl
 
 		backupSummary, err = r.Backup(s.Path, s.Files, "", tags, traceId, progressChan)
 		if err != nil {
-			switch err.Error() {
-			case restic.ERROR_MESSAGE_BACKUP_CANCELED.Error():
-				logger.Infof("backup canceled, stopping..., traceId: %s", traceId)
-				return
-			case restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error():
-				logger.Infof("space backup upload stopped, sts token expired, refresh and retring..., traceId: %s", traceId)
-				if err = s.refreshStsTokens(ctx); err != nil {
+			// switch err.Error() {
+			// case restic.ERROR_MESSAGE_BACKUP_CANCELED.Error():
+			// 	logger.Infof("backup canceled, stopping..., traceId: %s", traceId)
+			// 	return
+			// case restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error():
+			// 	logger.Infof("space backup upload stopped, sts token expired, refresh and retring..., traceId: %s", traceId)
+			// 	if err = s.refreshStsTokens(ctx); err != nil {
+			// 		err = fmt.Errorf("space backup upload sts token service refresh-token error: %v, traceId: %s", err, traceId)
+			// 		return
+			// 	}
+			// 	continue
+			// default:
+			// 	return nil, nil, errors.WithStack(err)
+			// }
+			if err == restic.ERROR_MESSAGE_TOKEN_EXPIRED {
+				if err = s.refreshStsTokens(ctx); err == nil {
+					continue
+				} else {
 					err = fmt.Errorf("space backup upload sts token service refresh-token error: %v, traceId: %s", err, traceId)
-					return
 				}
-				continue
-			default:
-				return nil, nil, errors.WithStack(err)
 			}
+
+			e := r.Rollback()
+			if e != nil {
+				err = errors.Wrap(err, e.Error())
+			}
+			break
 		}
 
 		// var currentBackupType = backupType

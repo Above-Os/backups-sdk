@@ -99,6 +99,9 @@ func (d *BaseHandler) Backup(ctx context.Context, progressCallback func(percentD
 	backupSummary, err = r.Backup(d.opts.Path, d.opts.Files, "", tags, traceId, progressChan)
 	if err != nil {
 		err = errors.WithStack(err)
+		if e := r.Rollback(); e != nil {
+			err = errors.Wrap(err, e.Error())
+		}
 		return
 	}
 

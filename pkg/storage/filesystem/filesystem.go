@@ -3,7 +3,10 @@ package filesystem
 import (
 	"context"
 	"fmt"
+	"os"
 	"path"
+	"path/filepath"
+	"strings"
 
 	"bytetrade.io/web3os/backups-sdk/pkg/constants"
 	"bytetrade.io/web3os/backups-sdk/pkg/logger"
@@ -11,6 +14,7 @@ import (
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/model"
 	"bytetrade.io/web3os/backups-sdk/pkg/utils"
+	"github.com/pkg/errors"
 )
 
 type Filesystem struct {
@@ -45,6 +49,22 @@ func (f *Filesystem) Backup(ctx context.Context, progressCallback func(percentDo
 
 	f.BaseHandler.SetOptions(opts)
 	backupSummary, err = f.BaseHandler.Backup(ctx, progressCallback)
+
+	if err != nil {
+		files, e := f.getTmpFiles(storageInfo.Url)
+		if e != nil {
+			err = errors.Wrap(err, e.Error())
+		} else if files != nil && len(files) > 0 {
+			for _, fn := range files {
+				if deleterr := utils.DeleteFile(fn); deleterr != nil {
+					logger.Errorf("fs backup delete tmp file error: %v", deleterr)
+				} else {
+					logger.Debugf("fs backup delete tmp file successful: %s", fn)
+				}
+			}
+		}
+	}
+
 	return backupSummary, storageInfo, err
 }
 
@@ -144,4 +164,31 @@ func (f *Filesystem) setRepoDir() error {
 		return nil
 	}
 	return nil
+}
+
+func (f *Filesystem) getTmpFiles(root string) ([]string, error) {
+	var files []string
+
+	pattern := filepath.Join(root, "data", "*")
+	dirs, err := filepath.Glob(pattern)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, dir := range dirs {
+		err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() && strings.Contains(info.Name(), "-tmp-") {
+				files = append(files, path)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return files, nil
 }

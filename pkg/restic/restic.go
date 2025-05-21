@@ -163,6 +163,44 @@ func (r *Restic) Init() (string, error) {
 	return string(output), nil
 }
 
+func (r *Restic) Rollback() error {
+	backoff := wait.Backoff{
+		Duration: 2 * time.Second,
+		Factor:   2,
+		Jitter:   0.1,
+		Steps:    10,
+	}
+
+	if err := retry.OnError(backoff, func(err error) bool {
+		return true
+	}, func() error {
+		res, _ := r.prune()
+		if strings.Contains(res, ERROR_MESSAGE_LOCKED.Error()) {
+			r.Unlock()
+			return fmt.Errorf("retry")
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *Restic) prune() (string, error) {
+	var getCtx, cancel = context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	r.addCommand([]string{"prune", PARAM_INSECURE_TLS}).addExtended()
+
+	cmd := exec.CommandContext(getCtx, r.dir, r.args...)
+	cmd.Env = append(cmd.Env, r.opt.RepoEnvs.Slice()...)
+	logger.Infof("[Cmd] %s", cmd.String())
+	output, _ := cmd.CombinedOutput()
+	logger.Debugf("[restic] prune result: %s", string(output))
+
+	return string(output), nil
+}
+
 func (r *Restic) Stats() (*StatsContainer, error) {
 	var getCtx, cancel = context.WithCancel(r.ctx)
 	defer cancel()
@@ -436,6 +474,9 @@ func (r *Restic) repairIndex() (string, error) {
 }
 
 func (r *Restic) Unlock() (string, error) {
+	var getCtx, cancel = context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
 	r.addCommand([]string{"unlock", "--remove-all", PARAM_INSECURE_TLS}).addExtended()
 
 	opts := utils.CommandOptions{
@@ -443,7 +484,7 @@ func (r *Restic) Unlock() (string, error) {
 		Args: r.args,
 		Envs: r.opt.RepoEnvs.Kv(),
 	}
-	c := utils.NewCommand(r.ctx, opts)
+	c := utils.NewCommand(getCtx, opts)
 	sb := new(strings.Builder)
 
 	go func() {
