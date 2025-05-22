@@ -145,7 +145,7 @@ func (f *Filesystem) FormatRepository() (storageInfo *model.StorageInfo, err err
 
 	storageInfo = &model.StorageInfo{
 		Location:  "filesystem",
-		Url:       path.Join(f.Endpoint, constants.OlaresStorageDefaultPrefix, fmt.Sprintf("%s-%s", f.RepoName, f.RepoId)),
+		Url:       path.Join(f.Endpoint, constants.OlaresStorageDefaultPrefix, utils.JoinName(f.RepoName, f.RepoId)),
 		CloudName: constants.CloudFilesystemName,
 		RegionId:  "",
 		Bucket:    "",

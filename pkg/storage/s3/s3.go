@@ -129,68 +129,83 @@ func (s *Aws) GetEnv(repository string) *restic.ResticEnvs {
 	return envs
 }
 
+// {bucket}.{region}.amazonaws.com/{prefix}
+// {bucket}.s3.{region}.amazonaws.com/{prefix}
+// s3.{region}.amazonaws.com/{bucket}/{prefix}
 func (s *Aws) FormatRepository() (storageInfo *model.StorageInfo, err error) {
 	if s.Endpoint == "" {
 		err = errors.New("s3 endpoint is required")
 		return
 	}
 
-	var endpoint = strings.TrimRight(s.Endpoint, "/")
-
-	s3UrlInfo, err := url.Parse(endpoint)
+	b, r, p, ep, err := s3format(s.Endpoint, s.RepoName, s.RepoId)
 	if err != nil {
 		return nil, err
 	}
 
-	var host = s3UrlInfo.Host
-	var hosts = strings.Split(host, ".")
-	if len(hosts) < 4 {
-		return nil, fmt.Errorf("host invalid, host: %s", host)
-	}
-
-	if !strings.Contains(host, constants.StorageS3Domain) {
-		return nil, fmt.Errorf("host is not s3 format, host: %s", host)
-	}
-
-	var region, bucket, prefix string
-	path := strings.TrimLeft(s3UrlInfo.Path, "/")
-	paths := []string{}
-	if path != "" {
-		paths = strings.Split(path, "/")
-	}
-
-	if hosts[0] == "s3" {
-		region = hosts[1]
-		if len(paths) == 0 {
-			return nil, fmt.Errorf("bucket not exists in path: %s", path)
-		}
-		bucket = paths[0]
-		if len(paths) > 1 {
-			prefix = strings.Join(paths[1:], "/")
-		}
-	} else {
-		bucket = hosts[0]
-		region = hosts[1]
-
-		prefix = path
-	}
-
-	if prefix == "" {
-		prefix = constants.OlaresStorageDefaultPrefix
-	} else {
-		prefix = fmt.Sprintf("%s/%s", prefix, constants.OlaresStorageDefaultPrefix)
-	}
-
-	repository := fmt.Sprintf("s3:%s://s3.%s.amazonaws.com/%s/%s/%s-%s", s3UrlInfo.Scheme, region, bucket, prefix, utils.EncodeURLPart(s.RepoName), s.RepoId)
-
 	storageInfo = &model.StorageInfo{
 		Location:  "awss3",
-		Url:       repository,
+		Url:       ep,
 		CloudName: constants.CloudAWSName,
-		RegionId:  region,
-		Bucket:    bucket,
-		Prefix:    prefix,
+		RegionId:  r,
+		Bucket:    b,
+		Prefix:    p,
 	}
 
 	return
+}
+
+func s3format(rawurl string, repoName, repoId string) (bucket, region, prefix, endpoint string, err error) {
+	u, err := url.Parse(rawurl)
+	if err != nil {
+		return "", "", "", "", err
+	}
+
+	host := u.Host
+	path := strings.TrimPrefix(u.Path, "/")
+
+	parts := strings.Split(host, ".")
+
+	if len(parts) < 3 || parts[len(parts)-2] != "amazonaws" || parts[len(parts)-1] != "com" {
+		return "", "", "", "", errors.New("host is not a valid amazonaws.com domain")
+	}
+
+	switch {
+	case strings.HasPrefix(host, "s3."):
+		if len(parts) < 4 {
+			return "", "", "", "", errors.New("host format invalid for s3.region.amazonaws.com")
+		}
+		region = parts[1]
+		pathParts := strings.SplitN(path, "/", 2)
+		if len(pathParts) < 1 || pathParts[0] == "" {
+			return "", "", "", "", errors.New("bucket not found in path")
+		}
+		bucket = pathParts[0]
+		if len(pathParts) == 2 {
+			prefix = pathParts[1]
+		} else {
+			prefix = ""
+		}
+
+	case len(parts) >= 5 && parts[1] == "s3":
+		bucket = parts[0]
+		region = parts[2]
+		prefix = path
+
+	case len(parts) >= 4:
+		bucket = parts[0]
+		region = parts[1]
+		prefix = path
+
+	default:
+		return "", "", "", "", errors.New("host format not recognized")
+	}
+
+	if prefix != "" {
+		endpoint = fmt.Sprintf("s3:https://s3.%s.amazonaws.com/%s/%s/%s", region, bucket, prefix, utils.JoinName(utils.EncodeURLPart(repoName), repoId))
+	} else {
+		endpoint = fmt.Sprintf("s3:https://s3.%s.amazonaws.com/%s/%s", region, bucket, utils.JoinName(utils.EncodeURLPart(repoName), repoId))
+	}
+
+	return bucket, region, prefix, endpoint, nil
 }

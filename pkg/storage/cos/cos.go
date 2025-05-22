@@ -177,7 +177,7 @@ func (c *TencentCloud) FormatRepository() (storageInfo *model.StorageInfo, err e
 		prefix = fmt.Sprintf("%s/%s", strings.Join(paths[1:], "/"), constants.OlaresStorageDefaultPrefix)
 	}
 
-	var repository = fmt.Sprintf("s3:%s://%s/%s/%s/%s-%s", cosUrlInfo.Scheme, cosUrlInfo.Host, bucket, prefix, utils.EncodeURLPart(c.RepoName), c.RepoId)
+	var repository = fmt.Sprintf("s3:%s://%s/%s/%s/%s", cosUrlInfo.Scheme, cosUrlInfo.Host, bucket, prefix, utils.JoinName(utils.EncodeURLPart(c.RepoName), c.RepoId))
 
 	c.CloudName = constants.CloudTencentName
 	c.RegionId = region
