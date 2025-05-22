@@ -40,6 +40,12 @@ const (
 	ERROR_MESSAGE_BACKUP_CANCELED                RESTIC_ERROR_MESSAGE = "backup canceled"
 	ERROR_MESSAGE_RESTORE_CANCELED               RESTIC_ERROR_MESSAGE = "restore canceled"
 	ERROR_MESSAGE_FILES_NOT_FOUND                RESTIC_ERROR_MESSAGE = "does not match any files"
+	ERROR_MESSAGE_SERVER_MISBEHAVING             RESTIC_ERROR_MESSAGE = "server misbehaving"
+	ERROR_MESSAGE_NO_SUCH_DEVICE                 RESTIC_ERROR_MESSAGE = "no such device"
+	ERROR_MESSAGE_HOST_IS_DOWN                   RESTIC_ERROR_MESSAGE = "host is down"
+	ERROR_MESSAGE_NO_SPACE_LEFT_ON_DEVICE        RESTIC_ERROR_MESSAGE = "no space left on device"
+	ERROR_MESSAGE_ACCESS_DENIED                  RESTIC_ERROR_MESSAGE = "Access Denied"
+	ERROR_MESSAGE_ACCESS_DENIED_MESSAGE          RESTIC_ERROR_MESSAGE = "access denied"
 )
 
 const (
@@ -54,6 +60,10 @@ const (
 
 func (e RESTIC_ERROR_MESSAGE) Error() string {
 	return string(e)
+}
+
+func (e RESTIC_ERROR_MESSAGE) ToLower() string {
+	return strings.ToLower(string(e))
 }
 
 const (
@@ -338,6 +348,22 @@ func (r *Restic) Backup(folder string, files []string, filePathPrefix string, ta
 						errorMsg = ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE
 						c.Cancel()
 						return
+					case strings.Contains(msg, ERROR_MESSAGE_SERVER_MISBEHAVING.Error()):
+						errorMsg = ERROR_MESSAGE_SERVER_MISBEHAVING
+						c.Cancel()
+						return
+					case strings.Contains(msg, ERROR_MESSAGE_ACCESS_DENIED.Error()):
+						errorMsg = RESTIC_ERROR_MESSAGE(ERROR_MESSAGE_ACCESS_DENIED.ToLower())
+						c.Cancel()
+						return
+					case strings.Contains(msg, ERROR_MESSAGE_NO_SUCH_DEVICE.Error()):
+						errorMsg = ERROR_MESSAGE_NO_SUCH_DEVICE
+						c.Cancel()
+						return
+					case strings.Contains(msg, ERROR_MESSAGE_HOST_IS_DOWN.Error()):
+						errorMsg = ERROR_MESSAGE_HOST_IS_DOWN
+						c.Cancel()
+						return
 					case strings.Contains(msg, ERROR_MESSAGE_FILES_NOT_FOUND.Error()):
 						continue
 					default:
@@ -376,7 +402,11 @@ func (r *Restic) Backup(folder string, files []string, filePathPrefix string, ta
 					if err := json.Unmarshal(res, &errObj); err != nil {
 						errorMsg = RESTIC_ERROR_MESSAGE(err.Error())
 					} else {
-						errorMsg = RESTIC_ERROR_MESSAGE(errObj.Error.Message)
+						if strings.Contains(errObj.Error.Message, ERROR_MESSAGE_NO_SPACE_LEFT_ON_DEVICE.Error()) {
+							errorMsg = ERROR_MESSAGE_NO_SPACE_LEFT_ON_DEVICE
+						} else {
+							errorMsg = RESTIC_ERROR_MESSAGE(errObj.Error.Message)
+						}
 					}
 					messagePool.Put(status)
 					c.Cancel()
@@ -631,12 +661,12 @@ func (r *Restic) GetSnapshots(tags []string) (*SnapshotList, error) {
 						errorMsg = ERROR_MESSAGE_REPOSITORY_DOES_NOT_EXIST
 						return
 					default:
-						errorMsg = RESTIC_ERROR_MESSAGE(msg)
+						errorMsg = RESTIC_ERROR_MESSAGE(r.trimError(msg))
 						return
 					}
 				}
 				if err := json.Unmarshal(res, &summary); err != nil {
-					errorMsg = RESTIC_ERROR_MESSAGE(err.Error())
+					errorMsg = RESTIC_ERROR_MESSAGE(r.trimError(err.Error()))
 					return
 				}
 			case <-r.ctx.Done():
@@ -869,6 +899,10 @@ func (r *Restic) formatBackupFiles(files []string) ([]string, error) {
 	}
 
 	return res, nil
+}
+
+func (r *Restic) trimError(s string) string {
+	return strings.ReplaceAll(s, "Fatal: ", "")
 }
 
 var messagePool *statusMessagePool

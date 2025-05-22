@@ -64,3 +64,10 @@ func GetSuffix(c string, s string) (string, error) {
 func EncodeURLPart(raw string) string {
 	return url.PathEscape(raw)
 }
+
+func JoinName(prefix, suffix string) string {
+	if suffix == "" {
+		return prefix
+	}
+	return fmt.Sprintf("%s-%s", prefix, suffix)
+}
