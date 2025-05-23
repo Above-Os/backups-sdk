@@ -202,9 +202,9 @@ func s3format(rawurl string, repoName, repoId string) (bucket, region, prefix, e
 	}
 
 	if prefix != "" {
-		endpoint = fmt.Sprintf("s3:https://s3.%s.amazonaws.com/%s/%s/%s", region, bucket, prefix, utils.JoinName(utils.EncodeURLPart(repoName), repoId))
+		endpoint = fmt.Sprintf("s3:https://s3.%s.amazonaws.com/%s/%s/%s/%s", region, bucket, prefix, constants.OlaresStorageDefaultPrefix, utils.JoinName(utils.EncodeURLPart(repoName), repoId))
 	} else {
-		endpoint = fmt.Sprintf("s3:https://s3.%s.amazonaws.com/%s/%s", region, bucket, utils.JoinName(utils.EncodeURLPart(repoName), repoId))
+		endpoint = fmt.Sprintf("s3:https://s3.%s.amazonaws.com/%s/%s/%s", region, bucket, constants.OlaresStorageDefaultPrefix, utils.JoinName(utils.EncodeURLPart(repoName), repoId))
 	}
 
 	return bucket, region, prefix, endpoint, nil
