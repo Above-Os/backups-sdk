@@ -28,11 +28,13 @@ type Space struct {
 	Password          string
 	Path              string
 	Files             []string
+	FilesPrefixPath   []string
 	LimitUploadRate   string
 	LimitDownloadRate string
 	CloudApiMirror    string
 	StsToken          *StsToken
 	Operator          string
+	BackupType        string
 }
 
 type StorageResponse struct {
@@ -180,7 +182,7 @@ func (s *Space) getStsToken(ctx context.Context) error {
 
 func (s *Space) refreshStsTokens(ctx context.Context) error {
 	if err := s.StsToken.RefreshStsToken(ctx, s.getCloudApi()); err != nil {
-		return errors.WithStack(fmt.Errorf("refresh sts token error: %v", err))
+		return err
 	}
 
 	return nil
@@ -193,18 +195,20 @@ func (s *Space) getCloudApi() string {
 
 func (s *Space) getTags() []string {
 	var tags = []string{
-		fmt.Sprintf("repo-id=%s", s.RepoId),
 		fmt.Sprintf("repo-name=%s", s.RepoName),
+		fmt.Sprintf("backup-type=%s", s.BackupType),
 	}
 
 	if s.Operator != "" {
 		tags = append(tags, fmt.Sprintf("operator=%s", s.Operator))
 	}
 
-	if s.Files != nil && len(s.Files) > 0 {
-		tags = append(tags, "content-type=files")
-	} else {
-		tags = append(tags, "content-type=dirs")
+	if s.RepoId != "" {
+		tags = append(tags, fmt.Sprintf("repo-id=%s", s.RepoId))
+	}
+
+	if s.FilesPrefixPath != nil && len(s.FilesPrefixPath) > 0 {
+		tags = append(tags, fmt.Sprintf("files-prefix-path=%v", s.FilesPrefixPath))
 	}
 
 	return tags

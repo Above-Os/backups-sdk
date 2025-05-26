@@ -57,6 +57,7 @@ func (d *BaseHandler) Backup(ctx context.Context, progressCallback func(percentD
 		if err.Error() == restic.MESSAGE_REPOSITORY_ALREADY_INITIALIZED {
 			initialized = true
 		} else {
+			logger.Errorf("initializing repo %s, traceId: %s, error: %v", repoName, traceId, err)
 			return
 		}
 	}
@@ -222,18 +223,20 @@ func (h *BaseHandler) Stats(ctx context.Context) (*restic.StatsContainer, error)
 
 func (h *BaseHandler) getTags() []string {
 	var tags = []string{
-		fmt.Sprintf("repo-id=%s", h.opts.RepoId),
 		fmt.Sprintf("repo-name=%s", h.opts.RepoName),
+		fmt.Sprintf("backup-type=%s", h.opts.BackupType),
 	}
 
 	if h.opts.Operator != "" {
 		tags = append(tags, fmt.Sprintf("operator=%s", h.opts.Operator))
 	}
 
-	if h.opts.Files != nil && len(h.opts.Files) > 0 {
-		tags = append(tags, "content-type=files")
-	} else {
-		tags = append(tags, "content-type=dirs")
+	if h.opts.RepoId != "" {
+		tags = append(tags, fmt.Sprintf("repo-id=%s", h.opts.RepoId))
+	}
+
+	if h.opts.FilesPrefixPath != nil && len(h.opts.FilesPrefixPath) > 0 {
+		tags = append(tags, fmt.Sprintf("files-prefix-path=%v", h.opts.FilesPrefixPath))
 	}
 
 	return tags

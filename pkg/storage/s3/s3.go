@@ -27,8 +27,10 @@ type Aws struct {
 	LimitDownloadRate string
 	Path              string
 	Files             []string
+	FilesPrefixPath   []string
 	BaseHandler       base.Interface
 	Operator          string
+	BackupType        string
 }
 
 func (s *Aws) Backup(ctx context.Context, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
@@ -43,8 +45,10 @@ func (s *Aws) Backup(ctx context.Context, progressCallback func(percentDone floa
 		RepoName:        s.RepoName,
 		Path:            s.Path,
 		Files:           s.Files,
+		FilesPrefixPath: s.FilesPrefixPath,
 		LimitUploadRate: s.LimitUploadRate,
 		Operator:        s.Operator,
+		BackupType:      s.BackupType,
 		RepoEnvs:        envs,
 	}
 

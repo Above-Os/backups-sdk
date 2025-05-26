@@ -21,6 +21,7 @@ type BackupOption struct {
 	Basedir      string
 	Password     string
 	Operator     string
+	BackupType   string // file / app
 	Ctx          context.Context
 	Logger       *zap.SugaredLogger
 	Space        *options.SpaceBackupOption
@@ -66,11 +67,13 @@ func (b *BackupService) Backup(progressCallback func(percentDone float64)) (*res
 			RegionId:        strings.ToLower(b.option.Space.RegionId),
 			Path:            b.option.Space.Path,
 			Files:           b.option.Space.Files,
+			FilesPrefixPath: b.option.Space.FilesPrefixPath,
 			CloudApiMirror:  b.option.Space.CloudApiMirror,
 			LimitUploadRate: b.option.Space.LimitUploadRate,
 			Password:        password,
 			StsToken:        &space.StsToken{},
 			Operator:        b.option.Operator,
+			BackupType:      b.option.BackupType,
 		}
 	} else if b.option.Aws != nil {
 		service = &s3.Aws{
@@ -81,10 +84,12 @@ func (b *BackupService) Backup(progressCallback func(percentDone float64)) (*res
 			SecretAccessKey: b.option.Aws.SecretAccessKey,
 			Path:            b.option.Aws.Path,
 			Files:           b.option.Aws.Files,
+			FilesPrefixPath: b.option.Aws.FilesPrefixPath,
 			LimitUploadRate: b.option.Aws.LimitUploadRate,
 			Password:        password,
 			BaseHandler:     &BaseHandler{},
 			Operator:        b.option.Operator,
+			BackupType:      b.option.BackupType,
 		}
 	} else if b.option.TencentCloud != nil {
 		service = &cos.TencentCloud{
@@ -95,21 +100,25 @@ func (b *BackupService) Backup(progressCallback func(percentDone float64)) (*res
 			SecretAccessKey: b.option.TencentCloud.SecretAccessKey,
 			Path:            b.option.TencentCloud.Path,
 			Files:           b.option.TencentCloud.Files,
+			FilesPrefixPath: b.option.TencentCloud.FilesPrefixPath,
 			LimitUploadRate: b.option.TencentCloud.LimitUploadRate,
 			Password:        password,
 			BaseHandler:     &BaseHandler{},
 			Operator:        b.option.Operator,
+			BackupType:      b.option.BackupType,
 		}
 	} else if b.option.Filesystem != nil {
 		service = &filesystem.Filesystem{
-			RepoId:      b.option.Filesystem.RepoId,
-			RepoName:    b.option.Filesystem.RepoName,
-			Endpoint:    b.option.Filesystem.Endpoint,
-			Path:        b.option.Filesystem.Path,
-			Files:       b.option.Filesystem.Files,
-			Password:    password,
-			BaseHandler: &BaseHandler{},
-			Operator:    b.option.Operator,
+			RepoId:          b.option.Filesystem.RepoId,
+			RepoName:        b.option.Filesystem.RepoName,
+			Endpoint:        b.option.Filesystem.Endpoint,
+			Path:            b.option.Filesystem.Path,
+			Files:           b.option.Filesystem.Files,
+			FilesPrefixPath: b.option.Filesystem.FilesPrefixPath,
+			Password:        password,
+			BaseHandler:     &BaseHandler{},
+			Operator:        b.option.Operator,
+			BackupType:      b.option.BackupType,
 		}
 	} else {
 		logger.Fatalf("There is no suitable recovery method.")

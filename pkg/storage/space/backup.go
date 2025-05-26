@@ -125,7 +125,8 @@ func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone fl
 				if err = s.refreshStsTokens(ctx); err == nil {
 					continue
 				} else {
-					err = fmt.Errorf("space backup upload sts token service refresh-token error: %v, traceId: %s", err, traceId)
+					logger.Errorf("space backup upload sts token service refresh-token error: %v, traceId: %s", err, traceId)
+					// err = fmt.Errorf("space backup upload sts token service refresh-token error: %v, traceId: %s", err, traceId)
 				}
 			}
 
