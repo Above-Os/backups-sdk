@@ -18,15 +18,17 @@ import (
 )
 
 type Filesystem struct {
-	RepoId      string
-	RepoName    string
-	SnapshotId  string
-	Endpoint    string
-	Password    string
-	Path        string
-	Files       []string
-	BaseHandler base.Interface
-	Operator    string
+	RepoId          string
+	RepoName        string
+	SnapshotId      string
+	Endpoint        string
+	Password        string
+	Path            string
+	Files           []string
+	FilesPrefixPath []string
+	BaseHandler     base.Interface
+	Operator        string
+	BackupType      string
 }
 
 func (f *Filesystem) Backup(ctx context.Context, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
@@ -37,12 +39,14 @@ func (f *Filesystem) Backup(ctx context.Context, progressCallback func(percentDo
 
 	var envs = f.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
-		RepoId:   f.RepoId,
-		RepoName: f.RepoName,
-		Path:     f.Path,
-		Files:    f.Files,
-		Operator: f.Operator,
-		RepoEnvs: envs,
+		RepoId:          f.RepoId,
+		RepoName:        f.RepoName,
+		Path:            f.Path,
+		Files:           f.Files,
+		FilesPrefixPath: f.FilesPrefixPath,
+		Operator:        f.Operator,
+		BackupType:      f.BackupType,
+		RepoEnvs:        envs,
 	}
 
 	logger.Debugf("fs backup env vars: %s", utils.Base64encode([]byte(envs.String())))

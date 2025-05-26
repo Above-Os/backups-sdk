@@ -36,4 +36,7 @@ const (
 	StorageOperatorApp = "app"
 
 	TraceId = "traceId"
+
+	BackupTypeApp  = "app"
+	BackupTypeFile = "file"
 )

@@ -12,6 +12,7 @@ type SpaceBackupOption struct {
 	RepoName        string   `json:"repo_name"`
 	Path            string   `json:"path"`
 	Files           []string `json:"files"`
+	FilesPrefixPath []string `json:"files_prefix_path"`
 	LimitUploadRate string   `json:"limit_upload_rate"`
 	OlaresDid       string   `json:"olares_did"`
 	AccessToken     string   `json:"access_token"`
@@ -49,6 +50,7 @@ type AwsBackupOption struct {
 	SecretAccessKey string
 	Path            string
 	Files           []string `json:"files"`
+	FilesPrefixPath []string `json:"files_prefix_path"`
 	LimitUploadRate string
 }
 
@@ -79,6 +81,7 @@ type TencentCloudBackupOption struct {
 	SecretAccessKey string
 	Path            string
 	Files           []string `json:"files"`
+	FilesPrefixPath []string `json:"files_prefix_path"`
 	LimitUploadRate string
 }
 
@@ -102,11 +105,12 @@ func (o *TencentCloudBackupOption) AddFlags(cmd *cobra.Command) {
 var _ Option = &FilesystemBackupOption{}
 
 type FilesystemBackupOption struct {
-	RepoId   string
-	RepoName string
-	Endpoint string
-	Path     string
-	Files    []string `json:"files"`
+	RepoId          string
+	RepoName        string
+	Endpoint        string
+	Path            string
+	Files           []string `json:"files"`
+	FilesPrefixPath []string `json:"files_prefix_path"`
 }
 
 func NewBackupFilesystemOption() *FilesystemBackupOption {
