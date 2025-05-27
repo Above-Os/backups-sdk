@@ -18,13 +18,14 @@ import (
 
 type RestoreOption struct {
 	Password     string
-	Operator     string
+	Operator     string `json:"operator"`
+	BackupType   string `json:"backup_type"` // file / app
 	Ctx          context.Context
 	Logger       *zap.SugaredLogger
-	Space        *options.SpaceRestoreOption
-	Aws          *options.AwsRestoreOption
-	TencentCloud *options.TencentCloudRestoreOption
-	Filesystem   *options.FilesystemRestoreOption
+	Space        *options.SpaceRestoreOption        `json:"space,omitempty"`
+	Aws          *options.AwsRestoreOption          `json:"aws,omitempty"`
+	TencentCloud *options.TencentCloudRestoreOption `json:"tencentcloud,omitempty"`
+	Filesystem   *options.FilesystemRestoreOption   `json:"filesystem,omitempty"`
 }
 
 type RestoreService struct {
@@ -41,7 +42,7 @@ func NewRestoreService(option *RestoreOption) *RestoreService {
 	return restoreService
 }
 
-func (r *RestoreService) Restore(progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error) {
+func (r *RestoreService) Restore(progressCallback func(percentDone float64)) (restoreSummary map[string]*restic.RestoreSummaryOutput, metadata string, totalBytes uint64, err error) {
 	var password = r.password
 	if password == "" {
 		password, err = utils.InputPasswordWithConfirm(false)
@@ -70,6 +71,7 @@ func (r *RestoreService) Restore(progressCallback func(percentDone float64)) (re
 			LimitDownloadRate: r.option.Space.LimitDownloadRate,
 			StsToken:          &space.StsToken{},
 			Operator:          r.option.Operator,
+			BackupType:        r.option.BackupType,
 		}
 	} else if r.option.Aws != nil {
 		service = &s3.Aws{
@@ -84,6 +86,7 @@ func (r *RestoreService) Restore(progressCallback func(percentDone float64)) (re
 			Password:          password,
 			BaseHandler:       &BaseHandler{},
 			Operator:          r.option.Operator,
+			BackupType:        r.option.BackupType,
 		}
 	} else if r.option.TencentCloud != nil {
 		service = &cos.TencentCloud{
@@ -98,6 +101,7 @@ func (r *RestoreService) Restore(progressCallback func(percentDone float64)) (re
 			Password:          password,
 			BaseHandler:       &BaseHandler{},
 			Operator:          r.option.Operator,
+			BackupType:        r.option.BackupType,
 		}
 
 	} else if r.option.Filesystem != nil {
@@ -110,15 +114,16 @@ func (r *RestoreService) Restore(progressCallback func(percentDone float64)) (re
 			Password:    password,
 			BaseHandler: &BaseHandler{},
 			Operator:    r.option.Operator,
+			BackupType:  r.option.BackupType,
 		}
 	} else {
 		logger.Fatalf("There is no suitable recovery method.")
 	}
 
-	restoreOutput, err := service.Restore(r.option.Ctx, progressCallback)
+	restoreOutput, metadata, totalBytes, err := service.Restore(r.option.Ctx, progressCallback)
 	if err != nil {
 		fmt.Printf("Restore error: %v", err)
 	}
 
-	return restoreOutput, err
+	return restoreOutput, metadata, totalBytes, err
 }

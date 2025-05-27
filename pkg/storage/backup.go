@@ -45,7 +45,7 @@ func NewBackupService(option *BackupOption) *BackupService {
 	return backupService
 }
 
-func (b *BackupService) Backup(progressCallback func(percentDone float64)) (*restic.SummaryOutput, *model.StorageInfo, error) {
+func (b *BackupService) Backup(dryRun bool, progressCallback func(percentDone float64)) (*restic.SummaryOutput, *model.StorageInfo, error) {
 	var password = b.password
 	var err error
 	if password == "" {
@@ -68,6 +68,7 @@ func (b *BackupService) Backup(progressCallback func(percentDone float64)) (*res
 			Path:            b.option.Space.Path,
 			Files:           b.option.Space.Files,
 			FilesPrefixPath: b.option.Space.FilesPrefixPath,
+			Metadata:        b.option.Space.Metadata,
 			CloudApiMirror:  b.option.Space.CloudApiMirror,
 			LimitUploadRate: b.option.Space.LimitUploadRate,
 			Password:        password,
@@ -85,6 +86,7 @@ func (b *BackupService) Backup(progressCallback func(percentDone float64)) (*res
 			Path:            b.option.Aws.Path,
 			Files:           b.option.Aws.Files,
 			FilesPrefixPath: b.option.Aws.FilesPrefixPath,
+			Metadata:        b.option.Aws.Metadata,
 			LimitUploadRate: b.option.Aws.LimitUploadRate,
 			Password:        password,
 			BaseHandler:     &BaseHandler{},
@@ -101,6 +103,7 @@ func (b *BackupService) Backup(progressCallback func(percentDone float64)) (*res
 			Path:            b.option.TencentCloud.Path,
 			Files:           b.option.TencentCloud.Files,
 			FilesPrefixPath: b.option.TencentCloud.FilesPrefixPath,
+			Metadata:        b.option.TencentCloud.Metadata,
 			LimitUploadRate: b.option.TencentCloud.LimitUploadRate,
 			Password:        password,
 			BaseHandler:     &BaseHandler{},
@@ -115,6 +118,7 @@ func (b *BackupService) Backup(progressCallback func(percentDone float64)) (*res
 			Path:            b.option.Filesystem.Path,
 			Files:           b.option.Filesystem.Files,
 			FilesPrefixPath: b.option.Filesystem.FilesPrefixPath,
+			Metadata:        b.option.Filesystem.Metadata,
 			Password:        password,
 			BaseHandler:     &BaseHandler{},
 			Operator:        b.option.Operator,
@@ -124,7 +128,7 @@ func (b *BackupService) Backup(progressCallback func(percentDone float64)) (*res
 		logger.Fatalf("There is no suitable recovery method.")
 	}
 
-	summaryOutput, storageInfo, err := service.Backup(b.option.Ctx, progressCallback)
+	summaryOutput, storageInfo, err := service.Backup(b.option.Ctx, dryRun, progressCallback)
 
 	if err != nil {
 		fmt.Printf("Backup error: %v\n", err)

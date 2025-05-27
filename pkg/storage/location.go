@@ -9,13 +9,14 @@ import (
 	"bytetrade.io/web3os/backups-sdk/pkg/restic"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
 	"bytetrade.io/web3os/backups-sdk/pkg/storage/model"
+	"bytetrade.io/web3os/backups-sdk/pkg/storage/util"
 	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 	"github.com/pkg/errors"
 )
 
 type Location interface {
-	Backup(ctx context.Context, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error)
-	Restore(ctx context.Context, progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error)
+	Backup(ctx context.Context, dryRun bool, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error)
+	Restore(ctx context.Context, progressCallback func(percentDone float64)) (map[string]*restic.RestoreSummaryOutput, string, uint64, error)
 	Snapshots(ctx context.Context) (*restic.SnapshotList, error)
 	Stats(ctx context.Context) (*restic.StatsContainer, error)
 	Regions() ([]map[string]string, error)
@@ -35,7 +36,7 @@ func (d *BaseHandler) SetOptions(opts *restic.ResticOptions) {
 	d.opts = opts
 }
 
-func (d *BaseHandler) Backup(ctx context.Context, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, err error) {
+func (d *BaseHandler) Backup(ctx context.Context, dryRun bool, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, err error) {
 	var traceId = ctx.Value(constants.TraceId).(string)
 	var repoName = d.opts.RepoName
 	var tags = d.getTags()
@@ -97,7 +98,7 @@ func (d *BaseHandler) Backup(ctx context.Context, progressCallback func(percentD
 		}
 	}()
 
-	backupSummary, err = r.Backup(d.opts.Path, d.opts.Files, "", tags, traceId, progressChan)
+	backupSummary, err = r.Backup(d.opts.Path, d.opts.Files, "", tags, traceId, dryRun, progressChan)
 	if err != nil {
 		err = errors.WithStack(err)
 		if e := r.Rollback(); e != nil {
@@ -133,32 +134,43 @@ func (d *BaseHandler) Backup(ctx context.Context, progressCallback func(percentD
 	return
 }
 
-func (h *BaseHandler) Restore(ctx context.Context, progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error) {
+func (h *BaseHandler) Restore(ctx context.Context, progressCallback func(percentDone float64)) (map[string]*restic.RestoreSummaryOutput, string, uint64, error) {
 	var snapshotId = h.opts.SnapshotId
-	var path = h.opts.Path
+	var restoreTargetPath = h.opts.Path
+	var restoreSummarys = make(map[string]*restic.RestoreSummaryOutput)
+	var metadata string
+	var totalBytes, totalBytesTmp uint64
+	var err error
+
 	logger.Debugf("restore env vars: %s, snapshotId: %s", utils.Base64encode([]byte(h.opts.RepoEnvs.String())), snapshotId)
 
 	var re *restic.Restic
 	re, err = restic.NewRestic(ctx, h.opts)
 	if err != nil {
-		return
+		return nil, metadata, totalBytes, err
 	}
 	var snapshotSummary *restic.Snapshot
 	snapshotSummary, err = re.GetSnapshot(snapshotId)
 	if err != nil {
-		return
+		return nil, metadata, totalBytes, err
 	}
 
-	var uploadPath = snapshotSummary.Paths[0]
+	logger.Infof("restore spanshot: %s, paths: %d, tags: %v, summary %s", snapshotSummary.Id, len(snapshotSummary.Paths), snapshotSummary.Tags, utils.ToJSON(snapshotSummary.Summary))
 
-	for _, tag := range snapshotSummary.Tags {
-		if tag == "content-type=files" {
-			uploadPath = ""
-			break
+	var uploadPaths []string
+	var backupMetadata = util.GetMetadata(snapshotSummary.Tags)
+	var backupType = util.GetBackupType(snapshotSummary.Tags)
+
+	logger.Infof("restore spanshot: %s, backupType: %s, paths: %d, tags: %v, summary %s", snapshotSummary.Id, backupType, len(snapshotSummary.Paths), snapshotSummary.Tags, utils.ToJSON(snapshotSummary.Summary))
+
+	if backupType == constants.BackupTypeFile {
+		uploadPaths = append(uploadPaths, snapshotSummary.Paths[0])
+	} else {
+		uploadPaths, err = util.GetFilesPrefixPath(snapshotSummary.Tags)
+		if err != nil {
+			return nil, metadata, totalBytes, err
 		}
 	}
-
-	logger.Infof("restore spanshot %s detail: %s", snapshotId, utils.ToJSON(snapshotSummary))
 
 	var progressChan = make(chan float64, 100)
 	defer close(progressChan)
@@ -171,20 +183,45 @@ func (h *BaseHandler) Restore(ctx context.Context, progressCallback func(percent
 				if !ok {
 					return
 				}
-				progressCallback(progress)
+				progressCallback(progress) // todo
 			}
 		}
 	}()
 
-	restoreSummary, err = re.Restore(snapshotId, uploadPath, path, progressChan)
-	if err != nil {
-		logger.Errorf("restore %s snapshot %s error: %v", h.opts.RepoName, h.opts.SnapshotId, err)
-		return
+	for _, uploadPath := range uploadPaths {
+		var rs *restic.RestoreSummaryOutput
+		var backupTrimPath, targetPath = util.GetRestoreTargetPath(backupType, restoreTargetPath, uploadPath)
+		if err = util.Chmod(targetPath); err != nil {
+			err = fmt.Errorf("restore %s snapshot %s, backupType: %s, subfolder: %s, create target directory error: %v", h.opts.RepoName, h.opts.SnapshotId, backupType, uploadPath, err)
+			break
+		}
+		rs, err = re.Restore(snapshotId, backupTrimPath, targetPath, progressChan)
+		if err != nil {
+			logger.Errorf("restore %s snapshot %s, backupType: %s, subfolder: %s, error: %v", h.opts.RepoName, h.opts.SnapshotId, backupType, uploadPath, err)
+			break
+		}
+		if rs != nil {
+			restoreSummarys[uploadPath] = rs
+			totalBytesTmp += rs.TotalBytes
+		}
 	}
 
-	logger.Infof("Restore successful, name: %s, result: %s", h.opts.RepoName, utils.ToJSON(restoreSummary))
+	if err != nil {
+		return nil, metadata, totalBytes, err
+	}
 
-	return
+	metadata = backupMetadata
+	totalBytes = totalBytesTmp
+
+	// restoreSummary, err = re.Restore(snapshotId, uploadPath, path, progressChan)
+	// if err != nil {
+	// 	logger.Errorf("restore %s snapshot %s error: %v", h.opts.RepoName, h.opts.SnapshotId, err)
+	// 	return
+	// }
+
+	logger.Infof("Restore successful, name: %s, result: %s", h.opts.RepoName, utils.ToJSON(restoreSummarys))
+
+	return restoreSummarys, metadata, totalBytes, nil
 }
 
 func (h *BaseHandler) Snapshots(ctx context.Context) (*restic.SnapshotList, error) {
@@ -223,7 +260,7 @@ func (h *BaseHandler) Stats(ctx context.Context) (*restic.StatsContainer, error)
 
 func (h *BaseHandler) getTags() []string {
 	var tags = []string{
-		fmt.Sprintf("repo-name=%s", h.opts.RepoName),
+		fmt.Sprintf("repo-name=%s", utils.Base64encode([]byte(h.opts.RepoName))),
 		fmt.Sprintf("backup-type=%s", h.opts.BackupType),
 	}
 
@@ -235,8 +272,12 @@ func (h *BaseHandler) getTags() []string {
 		tags = append(tags, fmt.Sprintf("repo-id=%s", h.opts.RepoId))
 	}
 
-	if h.opts.FilesPrefixPath != nil && len(h.opts.FilesPrefixPath) > 0 {
-		tags = append(tags, fmt.Sprintf("files-prefix-path=%v", h.opts.FilesPrefixPath))
+	if h.opts.FilesPrefixPath != "" {
+		tags = append(tags, fmt.Sprintf("files-prefix-path=%s", utils.Base64encode([]byte(h.opts.FilesPrefixPath))))
+	}
+
+	if h.opts.Metadata != "" {
+		tags = append(tags, fmt.Sprintf("metadata=%s", utils.Base64encode([]byte(h.opts.Metadata))))
 	}
 
 	return tags

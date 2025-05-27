@@ -25,13 +25,14 @@ type Filesystem struct {
 	Password        string
 	Path            string
 	Files           []string
-	FilesPrefixPath []string
+	FilesPrefixPath string
+	Metadata        string
 	BaseHandler     base.Interface
 	Operator        string
 	BackupType      string
 }
 
-func (f *Filesystem) Backup(ctx context.Context, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
+func (f *Filesystem) Backup(ctx context.Context, dryRun bool, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
 	storageInfo, err = f.FormatRepository()
 	if err != nil {
 		return
@@ -44,6 +45,7 @@ func (f *Filesystem) Backup(ctx context.Context, progressCallback func(percentDo
 		Path:            f.Path,
 		Files:           f.Files,
 		FilesPrefixPath: f.FilesPrefixPath,
+		Metadata:        f.Metadata,
 		Operator:        f.Operator,
 		BackupType:      f.BackupType,
 		RepoEnvs:        envs,
@@ -52,7 +54,7 @@ func (f *Filesystem) Backup(ctx context.Context, progressCallback func(percentDo
 	logger.Debugf("fs backup env vars: %s", utils.Base64encode([]byte(envs.String())))
 
 	f.BaseHandler.SetOptions(opts)
-	backupSummary, err = f.BaseHandler.Backup(ctx, progressCallback)
+	backupSummary, err = f.BaseHandler.Backup(ctx, dryRun, progressCallback)
 
 	if err != nil {
 		files, e := f.getTmpFiles(storageInfo.Url)
@@ -72,10 +74,10 @@ func (f *Filesystem) Backup(ctx context.Context, progressCallback func(percentDo
 	return backupSummary, storageInfo, err
 }
 
-func (f *Filesystem) Restore(ctx context.Context, progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error) {
+func (f *Filesystem) Restore(ctx context.Context, progressCallback func(percentDone float64)) (map[string]*restic.RestoreSummaryOutput, string, uint64, error) {
 	storageInfo, err := f.FormatRepository()
 	if err != nil {
-		return
+		return nil, "", 0, err
 	}
 	var envs = f.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
