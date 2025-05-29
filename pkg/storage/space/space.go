@@ -28,7 +28,8 @@ type Space struct {
 	Password          string
 	Path              string
 	Files             []string
-	FilesPrefixPath   []string
+	FilesPrefixPath   string
+	Metadata          string
 	LimitUploadRate   string
 	LimitDownloadRate string
 	CloudApiMirror    string
@@ -195,7 +196,7 @@ func (s *Space) getCloudApi() string {
 
 func (s *Space) getTags() []string {
 	var tags = []string{
-		fmt.Sprintf("repo-name=%s", s.RepoName),
+		fmt.Sprintf("repo-name=%s", utils.Base64encode([]byte(s.RepoName))),
 		fmt.Sprintf("backup-type=%s", s.BackupType),
 	}
 
@@ -207,8 +208,12 @@ func (s *Space) getTags() []string {
 		tags = append(tags, fmt.Sprintf("repo-id=%s", s.RepoId))
 	}
 
-	if s.FilesPrefixPath != nil && len(s.FilesPrefixPath) > 0 {
-		tags = append(tags, fmt.Sprintf("files-prefix-path=%v", s.FilesPrefixPath))
+	if s.FilesPrefixPath != "" {
+		tags = append(tags, fmt.Sprintf("files-prefix-path=%s", utils.Base64encode([]byte(s.FilesPrefixPath))))
+	}
+
+	if s.Metadata != "" {
+		tags = append(tags, fmt.Sprintf("metadata=%s", utils.Base64encode([]byte(s.Metadata))))
 	}
 
 	return tags

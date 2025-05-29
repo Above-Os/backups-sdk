@@ -27,6 +27,7 @@ func NewRestoreSpaceOption() *SpaceRestoreOption {
 }
 
 func (o *SpaceRestoreOption) AddFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVarP(&o.RepoId, "repo-id", "", "", "Backup repo id")
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 	cmd.Flags().StringVarP(&o.RepoSuffix, "repo-suffix", "", "", "Backup repo suffix")
 	cmd.Flags().StringVarP(&o.SnapshotId, "snapshot-id", "", "", "Snapshot ID")
@@ -59,6 +60,7 @@ func NewRestoreAwsOption() *AwsRestoreOption {
 }
 
 func (o *AwsRestoreOption) AddFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVarP(&o.RepoId, "repo-id", "", "", "Backup repo id")
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 	cmd.Flags().StringVarP(&o.SnapshotId, "snapshot-id", "", "", "Snapshot ID")
 	cmd.Flags().StringVarP(&o.Endpoint, "endpoint", "", "", "Endpoint for S3, for example https://{bucket}.{region}.amazonaws.com/{prefix}")
@@ -87,6 +89,7 @@ func NewRestoreTencentCloudOption() *TencentCloudRestoreOption {
 }
 
 func (o *TencentCloudRestoreOption) AddFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVarP(&o.RepoId, "repo-id", "", "", "Backup repo id")
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 	cmd.Flags().StringVarP(&o.SnapshotId, "snapshot-id", "", "", "Snapshot ID")
 	cmd.Flags().StringVarP(&o.Endpoint, "endpoint", "", "", "Endpoint for Tencent COS, for example https://cos.{region}.myqcloud.com/{bucket}/{prefix}")
@@ -113,6 +116,7 @@ func NewRestoreFilesystemOption() *FilesystemRestoreOption {
 }
 
 func (o *FilesystemRestoreOption) AddFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVarP(&o.RepoId, "repo-id", "", "", "Backup repo id")
 	cmd.Flags().StringVarP(&o.RepoName, "repo-name", "", "", "Backup repo name")
 	cmd.Flags().StringVarP(&o.SnapshotId, "snapshot-id", "", "", "Snapshot ID")
 	cmd.Flags().StringVarP(&o.Endpoint, "endpoint", "", "", "The endpoint of the filesystem is the local computer directory where the backup will be stored")

@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
+func (s *Space) Backup(ctx context.Context, dryRun bool, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
 	if err = s.getStsToken(ctx); err != nil {
 		return
 	}
@@ -43,7 +43,9 @@ func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone fl
 				if !ok {
 					return
 				}
-				progressCallback(progress)
+				if !dryRun {
+					progressCallback(progress)
+				}
 			}
 		}
 	}()
@@ -60,6 +62,7 @@ func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone fl
 			CloudName:       s.CloudName,
 			RegionId:        s.RegionId,
 			Operator:        s.Operator,
+			BackupType:      s.BackupType,
 			RepoEnvs:        envs,
 			LimitUploadRate: s.LimitUploadRate,
 		}
@@ -105,7 +108,7 @@ func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone fl
 		var tags = s.getTags()
 		tags = append(tags, fmt.Sprintf("repo-suffix=%s", repoSuffix))
 
-		backupSummary, err = r.Backup(s.Path, s.Files, "", tags, traceId, progressChan)
+		backupSummary, err = r.Backup(s.Path, s.Files, "", tags, traceId, dryRun, progressChan)
 		if err != nil {
 			// switch err.Error() {
 			// case restic.ERROR_MESSAGE_BACKUP_CANCELED.Error():
@@ -121,18 +124,21 @@ func (s *Space) Backup(ctx context.Context, progressCallback func(percentDone fl
 			// default:
 			// 	return nil, nil, errors.WithStack(err)
 			// }
-			if err == restic.ERROR_MESSAGE_TOKEN_EXPIRED {
-				if err = s.refreshStsTokens(ctx); err == nil {
-					continue
-				} else {
-					logger.Errorf("space backup upload sts token service refresh-token error: %v, traceId: %s", err, traceId)
-					// err = fmt.Errorf("space backup upload sts token service refresh-token error: %v, traceId: %s", err, traceId)
-				}
-			}
 
-			e := r.Rollback()
-			if e != nil {
-				err = errors.Wrap(err, e.Error())
+			if !dryRun {
+				if err == restic.ERROR_MESSAGE_TOKEN_EXPIRED {
+					if err = s.refreshStsTokens(ctx); err == nil {
+						continue
+					} else {
+						logger.Errorf("space backup upload sts token service refresh-token error: %v, traceId: %s", err, traceId)
+						// err = fmt.Errorf("space backup upload sts token service refresh-token error: %v, traceId: %s", err, traceId)
+					}
+				}
+
+				e := r.Rollback()
+				if e != nil {
+					err = errors.Wrap(err, e.Error())
+				}
 			}
 			break
 		}

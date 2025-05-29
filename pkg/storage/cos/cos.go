@@ -29,13 +29,14 @@ type TencentCloud struct {
 	LimitDownloadRate string
 	Path              string
 	Files             []string
-	FilesPrefixPath   []string
+	FilesPrefixPath   string
+	Metadata          string
 	BaseHandler       base.Interface
 	Operator          string
 	BackupType        string
 }
 
-func (c *TencentCloud) Backup(ctx context.Context, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
+func (c *TencentCloud) Backup(ctx context.Context, dryRun bool, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
 	storageInfo, err = c.FormatRepository()
 	if err != nil {
 		return
@@ -50,6 +51,7 @@ func (c *TencentCloud) Backup(ctx context.Context, progressCallback func(percent
 		Path:            c.Path,
 		Files:           c.Files,
 		FilesPrefixPath: c.FilesPrefixPath,
+		Metadata:        c.Metadata,
 		LimitUploadRate: c.LimitUploadRate,
 		Operator:        c.Operator,
 		BackupType:      c.BackupType,
@@ -60,14 +62,14 @@ func (c *TencentCloud) Backup(ctx context.Context, progressCallback func(percent
 
 	c.BaseHandler.SetOptions(opts)
 
-	backupSummary, err = c.BaseHandler.Backup(ctx, progressCallback)
+	backupSummary, err = c.BaseHandler.Backup(ctx, dryRun, progressCallback)
 	return backupSummary, storageInfo, err
 }
 
-func (c *TencentCloud) Restore(ctx context.Context, progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error) {
+func (c *TencentCloud) Restore(ctx context.Context, progressCallback func(percentDone float64)) (map[string]*restic.RestoreSummaryOutput, string, uint64, error) {
 	storageInfo, err := c.FormatRepository()
 	if err != nil {
-		return
+		return nil, "", 0, err
 	}
 
 	var envs = c.GetEnv(storageInfo.Url) // cos restore

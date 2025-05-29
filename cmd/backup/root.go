@@ -11,6 +11,7 @@ import (
 )
 
 var p = func(percentDone float64) {}
+var dryRun = false
 
 func NewCmdBackup() *cobra.Command {
 	rootBackupCmds := &cobra.Command{
@@ -34,7 +35,7 @@ func NewCmdSpace() *cobra.Command {
 		Short: "Backup data to the Space",
 		Run: func(cmd *cobra.Command, args []string) {
 			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.WithValue(context.TODO(), constants.TraceId, utils.NewUUID()), Space: o, Operator: constants.StorageOperatorCli})
-			backupService.Backup(p)
+			backupService.Backup(dryRun, p)
 		},
 	}
 	o.AddFlags(cmd)
@@ -48,7 +49,7 @@ func NewCmdS3() *cobra.Command {
 		Short: "Backup data to Amazon S3 or S3-compatible storage",
 		Run: func(cmd *cobra.Command, args []string) {
 			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.WithValue(context.TODO(), constants.TraceId, utils.NewUUID()), Aws: o, Operator: constants.StorageOperatorCli})
-			backupService.Backup(p)
+			backupService.Backup(dryRun, p)
 		},
 	}
 	o.AddFlags(cmd)
@@ -62,7 +63,7 @@ func NewCmdCos() *cobra.Command {
 		Short: "Backup data to Tencent Cloud Object Storage (COS)",
 		Run: func(cmd *cobra.Command, args []string) {
 			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.WithValue(context.TODO(), constants.TraceId, utils.NewUUID()), TencentCloud: o, Operator: constants.StorageOperatorCli})
-			backupService.Backup(p)
+			backupService.Backup(dryRun, p)
 		},
 	}
 	o.AddFlags(cmd)
@@ -76,7 +77,7 @@ func NewCmdFs() *cobra.Command {
 		Short: "Backup data to the local filesystem or disk",
 		Run: func(cmd *cobra.Command, args []string) {
 			var backupService = storage.NewBackupService(&storage.BackupOption{Ctx: context.WithValue(context.TODO(), constants.TraceId, utils.NewUUID()), Filesystem: o, Operator: constants.StorageOperatorCli})
-			backupService.Backup(p)
+			backupService.Backup(dryRun, p)
 		},
 	}
 	o.AddFlags(cmd)

@@ -12,7 +12,8 @@ type SpaceBackupOption struct {
 	RepoName        string   `json:"repo_name"`
 	Path            string   `json:"path"`
 	Files           []string `json:"files"`
-	FilesPrefixPath []string `json:"files_prefix_path"`
+	FilesPrefixPath string   `json:"files_prefix_path"`
+	Metadata        string   `json:"metadata"`
 	LimitUploadRate string   `json:"limit_upload_rate"`
 	OlaresDid       string   `json:"olares_did"`
 	AccessToken     string   `json:"access_token"`
@@ -50,7 +51,8 @@ type AwsBackupOption struct {
 	SecretAccessKey string
 	Path            string
 	Files           []string `json:"files"`
-	FilesPrefixPath []string `json:"files_prefix_path"`
+	FilesPrefixPath string   `json:"files_prefix_path"`
+	Metadata        string   `json:"metadata"`
 	LimitUploadRate string
 }
 
@@ -81,7 +83,8 @@ type TencentCloudBackupOption struct {
 	SecretAccessKey string
 	Path            string
 	Files           []string `json:"files"`
-	FilesPrefixPath []string `json:"files_prefix_path"`
+	FilesPrefixPath string   `json:"files_prefix_path"`
+	Metadata        string   `json:"metadata"`
 	LimitUploadRate string
 }
 
@@ -110,7 +113,8 @@ type FilesystemBackupOption struct {
 	Endpoint        string
 	Path            string
 	Files           []string `json:"files"`
-	FilesPrefixPath []string `json:"files_prefix_path"`
+	FilesPrefixPath string   `json:"files_prefix_path"`
+	Metadata        string   `json:"metadata"`
 }
 
 func NewBackupFilesystemOption() *FilesystemBackupOption {

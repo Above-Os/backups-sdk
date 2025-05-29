@@ -27,13 +27,14 @@ type Aws struct {
 	LimitDownloadRate string
 	Path              string
 	Files             []string
-	FilesPrefixPath   []string
+	FilesPrefixPath   string
+	Metadata          string
 	BaseHandler       base.Interface
 	Operator          string
 	BackupType        string
 }
 
-func (s *Aws) Backup(ctx context.Context, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
+func (s *Aws) Backup(ctx context.Context, dryRun bool, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
 	storageInfo, err = s.FormatRepository()
 	if err != nil {
 		return
@@ -46,6 +47,7 @@ func (s *Aws) Backup(ctx context.Context, progressCallback func(percentDone floa
 		Path:            s.Path,
 		Files:           s.Files,
 		FilesPrefixPath: s.FilesPrefixPath,
+		Metadata:        s.Metadata,
 		LimitUploadRate: s.LimitUploadRate,
 		Operator:        s.Operator,
 		BackupType:      s.BackupType,
@@ -56,14 +58,14 @@ func (s *Aws) Backup(ctx context.Context, progressCallback func(percentDone floa
 
 	s.BaseHandler.SetOptions(opts)
 
-	backupSummary, err = s.BaseHandler.Backup(ctx, progressCallback)
+	backupSummary, err = s.BaseHandler.Backup(ctx, dryRun, progressCallback)
 	return backupSummary, storageInfo, err
 }
 
-func (s *Aws) Restore(ctx context.Context, progressCallback func(percentDone float64)) (restoreSummary *restic.RestoreSummaryOutput, err error) {
+func (s *Aws) Restore(ctx context.Context, progressCallback func(percentDone float64)) (map[string]*restic.RestoreSummaryOutput, string, uint64, error) {
 	storageInfo, err := s.FormatRepository()
 	if err != nil {
-		return
+		return nil, "", 0, err
 	}
 	var envs = s.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{

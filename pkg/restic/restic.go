@@ -30,7 +30,7 @@ const (
 	ERROR_MESSAGE_TOKEN_EXPIRED                      RESTIC_ERROR_MESSAGE = "The provided token has expired"
 	ERROR_MESSAGE_COS_TOKEN_EXPIRED                  RESTIC_ERROR_MESSAGE = "The Access Key Id you provided does not exist in our records"
 	ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE         RESTIC_ERROR_MESSAGE = "unable to open config file: Stat: 400 Bad Request"
-	ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE_MESSAGE RESTIC_ERROR_MESSAGE = "torage address is incorrect, unable to locate the configuration file."
+	ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE_MESSAGE RESTIC_ERROR_MESSAGE = "storage address is incorrect, unable to locate the configuration file"
 	ERROR_MESSAGE_CONFIG_INVALID                     RESTIC_ERROR_MESSAGE = "config invalid, please chek repository or authorization config"
 	ERROR_MESSAGE_LOCKED                             RESTIC_ERROR_MESSAGE = "repository is already locked by"
 	ERROR_MESSAGE_ALREADY_INITIALIZED                RESTIC_ERROR_MESSAGE = "repository master key and config already initialized"
@@ -42,12 +42,11 @@ const (
 	ERROR_MESSAGE_RESTORE_CANCELED                   RESTIC_ERROR_MESSAGE = "restore canceled"
 	ERROR_MESSAGE_FILES_NOT_FOUND                    RESTIC_ERROR_MESSAGE = "does not match any files"
 	ERROR_MESSAGE_SERVER_MISBEHAVING                 RESTIC_ERROR_MESSAGE = "server misbehaving"
-	ERROR_MESSAGE_SERVER_MISBEHAVING_MESSAGE         RESTIC_ERROR_MESSAGE = "backend service crashed or is unresponsive. please check if the network connection is normal."
+	ERROR_MESSAGE_SERVER_MISBEHAVING_MESSAGE         RESTIC_ERROR_MESSAGE = "backend service crashed or is unresponsive. please check if the network connection is normal"
 	ERROR_MESSAGE_NO_SUCH_DEVICE                     RESTIC_ERROR_MESSAGE = "no such device"
 	ERROR_MESSAGE_HOST_IS_DOWN                       RESTIC_ERROR_MESSAGE = "host is down"
 	ERROR_MESSAGE_NO_SPACE_LEFT_ON_DEVICE            RESTIC_ERROR_MESSAGE = "no space left on device"
 	ERROR_MESSAGE_ACCESS_DENIED                      RESTIC_ERROR_MESSAGE = "Access Denied"
-	ERROR_MESSAGE_ACCESS_DENIED_MESSAGE              RESTIC_ERROR_MESSAGE = "access denied"
 )
 
 const (
@@ -91,9 +90,11 @@ type ResticOptions struct {
 	SnapshotId        string
 	Path              string
 	Files             []string
-	FilesPrefixPath   []string
+	FilesPrefixPath   string
+	Metadata          string
 	LimitDownloadRate string
 	LimitUploadRate   string
+	DryRun            bool
 
 	Operator   string
 	BackupType string
@@ -285,7 +286,7 @@ func (r *Restic) Tag(snapshotId string, tags []string) error {
 	return nil
 }
 
-func (r *Restic) Backup(folder string, files []string, filePathPrefix string, tags []string, traceId string, progressChan chan float64) (*SummaryOutput, error) {
+func (r *Restic) Backup(folder string, files []string, filePathPrefix string, tags []string, traceId string, dryRun bool, progressChan chan float64) (*SummaryOutput, error) {
 	var filesPath, err = r.formatBackupFiles(files)
 	if err != nil {
 		return nil, fmt.Errorf("invalid backup file list path, error: %v", err.Error())
@@ -304,6 +305,9 @@ func (r *Restic) Backup(folder string, files []string, filePathPrefix string, ta
 		if folder != "" {
 			cmds = append(cmds, folder)
 		}
+	}
+	if dryRun {
+		cmds = append(cmds, "-n")
 	}
 
 	cmds = append(cmds, r.opt.SetLimitUploadRate(), PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS)
@@ -750,6 +754,10 @@ func (r *Restic) Restore(snapshotId string, subfolder string, target string, pro
 						errorMsg = ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE_MESSAGE
 						c.Cancel()
 						return
+					// case strings.Contains(msg, "path") && strings.Contains(msg, "not found"):
+					// 	errorMsg = RESTIC_ERROR_MESSAGE("")
+					// 	c.Cancel()
+					// 	return
 					default:
 						errorMsg = RESTIC_ERROR_MESSAGE(msg)
 						c.Cancel()
