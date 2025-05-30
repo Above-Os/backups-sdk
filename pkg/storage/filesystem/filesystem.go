@@ -165,7 +165,7 @@ func (f *Filesystem) setRepoDir() error {
 	var p = path.Join(f.Endpoint, constants.OlaresStorageDefaultPrefix, fmt.Sprintf("%s-%s", f.RepoName, f.RepoId))
 	if !utils.IsExist(p) {
 		if err := utils.CreateDir(p); err != nil {
-			return err
+			return errors.New("Failed to create backup folder. Please check your permissions.")
 		}
 		return nil
 	}

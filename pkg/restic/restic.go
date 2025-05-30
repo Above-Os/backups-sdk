@@ -37,16 +37,24 @@ const (
 	ERROR_MESSAGE_SNAPSHOT_NOT_FOUND                 RESTIC_ERROR_MESSAGE = "no matching ID found for prefix"
 	ERROR_MESSAGE_CONFIG_FILE_ALREADY_EXISTS         RESTIC_ERROR_MESSAGE = "config file already exists"
 	ERROR_MESSAGE_WRONG_PASSWORD_OR_NO_KEY_FOUND     RESTIC_ERROR_MESSAGE = "wrong password or no key found"
+	ERROR_MESSAGE_WRONG_PASSWORD                     RESTIC_ERROR_MESSAGE = "Wrong backup password."
 	ERROR_MESSAGE_REPOSITORY_DOES_NOT_EXIST          RESTIC_ERROR_MESSAGE = "repository does not exist: unable to open config file"
 	ERROR_MESSAGE_BACKUP_CANCELED                    RESTIC_ERROR_MESSAGE = "backup canceled"
 	ERROR_MESSAGE_RESTORE_CANCELED                   RESTIC_ERROR_MESSAGE = "restore canceled"
 	ERROR_MESSAGE_FILES_NOT_FOUND                    RESTIC_ERROR_MESSAGE = "does not match any files"
 	ERROR_MESSAGE_SERVER_MISBEHAVING                 RESTIC_ERROR_MESSAGE = "server misbehaving"
-	ERROR_MESSAGE_SERVER_MISBEHAVING_MESSAGE         RESTIC_ERROR_MESSAGE = "backend service crashed or is unresponsive. please check if the network connection is normal"
+	ERROR_MESSAGE_SERVER_MISBEHAVING_MESSAGE         RESTIC_ERROR_MESSAGE = "Network connection error."
+	ERROR_MESSAGE_REPOSITORY_BE_DAMAGED              RESTIC_ERROR_MESSAGE = "the repository could be damaged"
+	ERROR_MESSAGE_REPOSITORY_BE_DAMAGED_MESSAGE      RESTIC_ERROR_MESSAGE = "The repository might be corrupted. Please retry the snapshot task."
+	ERROR_MESSAGE_COS_ACCOUNT_ARREARS                RESTIC_ERROR_MESSAGE = "Due to your account is arrears, it is unavailable until you recharge."
+	ERROR_MESSAGE_COS_ACCOUNT_ARREARS_MESSAGE        RESTIC_ERROR_MESSAGE = "Your cloud storage account is overdue and the service is temporarily unavailable. Please recharge to continue."
 	ERROR_MESSAGE_NO_SUCH_DEVICE                     RESTIC_ERROR_MESSAGE = "no such device"
+	ERROR_MESSAGE_NO_SUCH_DEVICE_MESSAGE             RESTIC_ERROR_MESSAGE = "No storage device found."
 	ERROR_MESSAGE_HOST_IS_DOWN                       RESTIC_ERROR_MESSAGE = "host is down"
+	ERROR_MESSAGE_HOST_IS_DOWN_MESSAGE               RESTIC_ERROR_MESSAGE = "SMB host down."
 	ERROR_MESSAGE_NO_SPACE_LEFT_ON_DEVICE            RESTIC_ERROR_MESSAGE = "no space left on device"
 	ERROR_MESSAGE_ACCESS_DENIED                      RESTIC_ERROR_MESSAGE = "Access Denied"
+	ERROR_MESSAGE_ACCESS_DENIED_MESSAGE              RESTIC_ERROR_MESSAGE = "Access denied. Please provide the correct access key."
 )
 
 const (
@@ -220,7 +228,7 @@ func (r *Restic) Stats() (*StatsContainer, error) {
 	var getCtx, cancel = context.WithCancel(r.ctx)
 	defer cancel()
 
-	r.addCommand([]string{"stats", "--mode", "files-by-contents", PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS}).addExtended().addRequestTimeout()
+	r.addCommand([]string{"stats", "--mode", "raw-data", PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS}).addExtended().addRequestTimeout()
 
 	opts := utils.CommandOptions{
 		Path: r.dir,
@@ -364,15 +372,23 @@ func (r *Restic) Backup(folder string, files []string, filePathPrefix string, ta
 						c.Cancel()
 						return
 					case strings.Contains(msg, ERROR_MESSAGE_ACCESS_DENIED.Error()):
-						errorMsg = RESTIC_ERROR_MESSAGE(ERROR_MESSAGE_ACCESS_DENIED.ToLower())
+						errorMsg = ERROR_MESSAGE_ACCESS_DENIED_MESSAGE
 						c.Cancel()
 						return
 					case strings.Contains(msg, ERROR_MESSAGE_NO_SUCH_DEVICE.Error()):
-						errorMsg = ERROR_MESSAGE_NO_SUCH_DEVICE
+						errorMsg = ERROR_MESSAGE_NO_SUCH_DEVICE_MESSAGE
 						c.Cancel()
 						return
 					case strings.Contains(msg, ERROR_MESSAGE_HOST_IS_DOWN.Error()):
-						errorMsg = ERROR_MESSAGE_HOST_IS_DOWN
+						errorMsg = ERROR_MESSAGE_HOST_IS_DOWN_MESSAGE
+						c.Cancel()
+						return
+					case strings.Contains(msg, ERROR_MESSAGE_COS_ACCOUNT_ARREARS.Error()):
+						errorMsg = ERROR_MESSAGE_COS_ACCOUNT_ARREARS_MESSAGE
+						c.Cancel()
+						return
+					case strings.Contains(msg, ERROR_MESSAGE_REPOSITORY_BE_DAMAGED.Error()):
+						errorMsg = ERROR_MESSAGE_REPOSITORY_BE_DAMAGED_MESSAGE
 						c.Cancel()
 						return
 					case strings.Contains(msg, ERROR_MESSAGE_FILES_NOT_FOUND.Error()):
@@ -456,6 +472,8 @@ func (r *Restic) Repair() error {
 		Steps:    10,
 	}
 
+	var e error
+
 	if err := retry.OnError(backoff, func(err error) bool {
 		return true
 	}, func() error {
@@ -469,9 +487,16 @@ func (r *Restic) Repair() error {
 			r.Unlock()
 			return fmt.Errorf("retry")
 		}
+
+		if strings.Contains(res, ERROR_MESSAGE_WRONG_PASSWORD_OR_NO_KEY_FOUND.Error()) {
+			e = errors.New(ERROR_MESSAGE_WRONG_PASSWORD.Error())
+		}
 		return nil
 	}); err != nil {
 		return err
+	}
+	if e != nil {
+		return e
 	}
 	return nil
 }
