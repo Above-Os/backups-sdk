@@ -3,9 +3,9 @@ package storage
 import (
 	"context"
 
-	"bytetrade.io/web3os/backups-sdk/pkg/options"
-	"bytetrade.io/web3os/backups-sdk/pkg/storage/space"
 	"go.uber.org/zap"
+	"olares.com/backups-sdk/pkg/options"
+	"olares.com/backups-sdk/pkg/storage/space"
 )
 
 type RegionOption struct {

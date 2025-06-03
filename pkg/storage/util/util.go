@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"bytetrade.io/web3os/backups-sdk/pkg/constants"
-	"bytetrade.io/web3os/backups-sdk/pkg/utils"
+	"olares.com/backups-sdk/pkg/constants"
+	"olares.com/backups-sdk/pkg/utils"
 )
 
 func GetRestoreTargetPath(backupType string, restoreTargetPath string, uploadPath string) (string, string) {

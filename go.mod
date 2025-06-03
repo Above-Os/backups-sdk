@@ -1,4 +1,4 @@
-module bytetrade.io/web3os/backups-sdk
+module olares.com/backups-sdk
 
 go 1.22.0
 

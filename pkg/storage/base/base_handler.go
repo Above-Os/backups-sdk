@@ -3,7 +3,7 @@ package base
 import (
 	"context"
 
-	"bytetrade.io/web3os/backups-sdk/pkg/restic"
+	"olares.com/backups-sdk/pkg/restic"
 )
 
 type Interface interface {
