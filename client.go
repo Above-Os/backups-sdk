@@ -4,14 +4,14 @@ import (
 	"errors"
 	"runtime"
 
-	"bytetrade.io/web3os/backups-sdk/cmd/backup"
-	"bytetrade.io/web3os/backups-sdk/cmd/download"
-	"bytetrade.io/web3os/backups-sdk/cmd/region"
-	"bytetrade.io/web3os/backups-sdk/cmd/restore"
-	"bytetrade.io/web3os/backups-sdk/cmd/snapshots"
-	"bytetrade.io/web3os/backups-sdk/pkg/logger"
-	"bytetrade.io/web3os/backups-sdk/pkg/storage"
 	"github.com/spf13/cobra"
+	"olares.com/backups-sdk/cmd/backup"
+	"olares.com/backups-sdk/cmd/download"
+	"olares.com/backups-sdk/cmd/region"
+	"olares.com/backups-sdk/cmd/restore"
+	"olares.com/backups-sdk/cmd/snapshots"
+	"olares.com/backups-sdk/pkg/logger"
+	"olares.com/backups-sdk/pkg/storage"
 )
 
 func NewBackupCommands() *cobra.Command {

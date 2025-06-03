@@ -7,12 +7,12 @@ import (
 	"net/url"
 	"strings"
 
-	"bytetrade.io/web3os/backups-sdk/pkg/constants"
-	"bytetrade.io/web3os/backups-sdk/pkg/logger"
-	"bytetrade.io/web3os/backups-sdk/pkg/restic"
-	"bytetrade.io/web3os/backups-sdk/pkg/storage/base"
-	"bytetrade.io/web3os/backups-sdk/pkg/storage/model"
-	"bytetrade.io/web3os/backups-sdk/pkg/utils"
+	"olares.com/backups-sdk/pkg/constants"
+	"olares.com/backups-sdk/pkg/logger"
+	"olares.com/backups-sdk/pkg/restic"
+	"olares.com/backups-sdk/pkg/storage/base"
+	"olares.com/backups-sdk/pkg/storage/model"
+	"olares.com/backups-sdk/pkg/utils"
 )
 
 type TencentCloud struct {

@@ -7,8 +7,8 @@ import (
 	"os"
 	"os/exec"
 
-	"bytetrade.io/web3os/backups-sdk/pkg/logger"
 	"github.com/pkg/errors"
+	"olares.com/backups-sdk/pkg/logger"
 )
 
 type Command struct {

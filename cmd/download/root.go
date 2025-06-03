@@ -1,9 +1,9 @@
 package download
 
 import (
-	"bytetrade.io/web3os/backups-sdk/pkg/file"
-	"bytetrade.io/web3os/backups-sdk/pkg/options"
 	"github.com/spf13/cobra"
+	"olares.com/backups-sdk/pkg/file"
+	"olares.com/backups-sdk/pkg/options"
 )
 
 func NewCmdDownload() *cobra.Command {

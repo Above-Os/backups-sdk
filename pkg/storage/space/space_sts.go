@@ -7,11 +7,11 @@ import (
 	"os"
 	"time"
 
-	"bytetrade.io/web3os/backups-sdk/pkg/constants"
-	"bytetrade.io/web3os/backups-sdk/pkg/logger"
-	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 	"github.com/emicklei/go-restful/v3"
 	"github.com/pkg/errors"
+	"olares.com/backups-sdk/pkg/constants"
+	"olares.com/backups-sdk/pkg/logger"
+	"olares.com/backups-sdk/pkg/utils"
 )
 
 type CloudStorageAccountResponse struct {

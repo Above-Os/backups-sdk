@@ -1,9 +1,9 @@
 package snapshots
 
 import (
-	"bytetrade.io/web3os/backups-sdk/pkg/options"
-	"bytetrade.io/web3os/backups-sdk/pkg/storage"
 	"github.com/spf13/cobra"
+	"olares.com/backups-sdk/pkg/options"
+	"olares.com/backups-sdk/pkg/storage"
 )
 
 func NewCmdSnapshots() *cobra.Command {

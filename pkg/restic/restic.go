@@ -14,12 +14,12 @@ import (
 	"sync"
 	"time"
 
-	"bytetrade.io/web3os/backups-sdk/pkg/constants"
-	"bytetrade.io/web3os/backups-sdk/pkg/logger"
-	"bytetrade.io/web3os/backups-sdk/pkg/utils"
 	"github.com/olekukonko/tablewriter"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
+	"olares.com/backups-sdk/pkg/constants"
+	"olares.com/backups-sdk/pkg/logger"
+	"olares.com/backups-sdk/pkg/utils"
 )
 
 type RESTIC_ERROR_MESSAGE string
