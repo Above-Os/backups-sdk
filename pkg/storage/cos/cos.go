@@ -16,24 +16,26 @@ import (
 )
 
 type TencentCloud struct {
-	RepoId            string
-	RepoName          string
-	SnapshotId        string
-	Endpoint          string
-	AccessKey         string
-	SecretAccessKey   string
-	Password          string
-	CloudName         string
-	RegionId          string
-	LimitUploadRate   string
-	LimitDownloadRate string
-	Path              string
-	Files             []string
-	FilesPrefixPath   string
-	Metadata          string
-	BaseHandler       base.Interface
-	Operator          string
-	BackupType        string
+	RepoId                   string
+	RepoName                 string
+	SnapshotId               string
+	Endpoint                 string
+	AccessKey                string
+	SecretAccessKey          string
+	Password                 string
+	CloudName                string
+	RegionId                 string
+	LimitUploadRate          string
+	LimitDownloadRate        string
+	Path                     string
+	Files                    []string
+	FilesPrefixPath          string
+	Metadata                 string
+	BaseHandler              base.Interface
+	Operator                 string
+	BackupType               string
+	BackupAppTypeName        string
+	BackupFileTypeSourcePath string
 }
 
 func (c *TencentCloud) Backup(ctx context.Context, dryRun bool, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
@@ -44,18 +46,20 @@ func (c *TencentCloud) Backup(ctx context.Context, dryRun bool, progressCallback
 
 	var envs = c.GetEnv(storageInfo.Url) // cos backup
 	var opts = &restic.ResticOptions{
-		RepoId:          c.RepoId,
-		RepoName:        c.RepoName,
-		CloudName:       c.CloudName,
-		RegionId:        c.RegionId,
-		Path:            c.Path,
-		Files:           c.Files,
-		FilesPrefixPath: c.FilesPrefixPath,
-		Metadata:        c.Metadata,
-		LimitUploadRate: c.LimitUploadRate,
-		Operator:        c.Operator,
-		BackupType:      c.BackupType,
-		RepoEnvs:        envs,
+		RepoId:                   c.RepoId,
+		RepoName:                 c.RepoName,
+		CloudName:                c.CloudName,
+		RegionId:                 c.RegionId,
+		Path:                     c.Path,
+		Files:                    c.Files,
+		FilesPrefixPath:          c.FilesPrefixPath,
+		Metadata:                 c.Metadata,
+		LimitUploadRate:          c.LimitUploadRate,
+		Operator:                 c.Operator,
+		BackupType:               c.BackupType,
+		BackupAppTypeName:        c.BackupAppTypeName,
+		BackupFileTypeSourcePath: c.BackupFileTypeSourcePath,
+		RepoEnvs:                 envs,
 	}
 
 	logger.Debugf("cos backup env vars: %s", utils.Base64encode([]byte(envs.String())))
@@ -109,6 +113,27 @@ func (c *TencentCloud) Snapshots(ctx context.Context) (*restic.SnapshotList, err
 
 	c.BaseHandler.SetOptions(opts)
 	return c.BaseHandler.Snapshots(ctx)
+}
+
+func (c *TencentCloud) GetSnapshot(ctx context.Context, snapshotId string) (*restic.SnapshotList, error) {
+	storageInfo, err := c.FormatRepository()
+	if err != nil {
+		return nil, err
+	}
+
+	var envs = c.GetEnv(storageInfo.Url) // cos snapshot
+	var opts = &restic.ResticOptions{
+		RepoId:    c.RepoId,
+		RepoName:  c.RepoName,
+		CloudName: c.CloudName,
+		RegionId:  c.RegionId,
+		RepoEnvs:  envs,
+	}
+
+	logger.Debugf("cos snapshots env vars: %s", utils.Base64encode([]byte(envs.String())))
+
+	c.BaseHandler.SetOptions(opts)
+	return c.BaseHandler.GetSnapshot(ctx, snapshotId)
 }
 
 func (c *TencentCloud) Stats(ctx context.Context) (*restic.StatsContainer, error) {
@@ -171,7 +196,7 @@ func (c *TencentCloud) FormatRepository() (storageInfo *model.StorageInfo, err e
 
 	var region = hosts[1]
 
-	var path = strings.TrimLeft(cosUrlInfo.Path, "/")
+	var path = strings.Trim(cosUrlInfo.Path, "/")
 	var paths = strings.Split(path, "/")
 	if len(paths) == 0 {
 		return nil, fmt.Errorf("bucket not exists, path: %s", path)

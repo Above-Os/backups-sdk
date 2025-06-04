@@ -56,15 +56,17 @@ func (s *Space) Backup(ctx context.Context, dryRun bool, progressCallback func(p
 
 		var envs = s.GetEnv(storageInfo.Url)
 		var opts = &restic.ResticOptions{
-			RepoId:          s.RepoId,
-			RepoName:        s.RepoName,
-			RepoSuffix:      repoSuffix,
-			CloudName:       s.CloudName,
-			RegionId:        s.RegionId,
-			Operator:        s.Operator,
-			BackupType:      s.BackupType,
-			RepoEnvs:        envs,
-			LimitUploadRate: s.LimitUploadRate,
+			RepoId:                   s.RepoId,
+			RepoName:                 s.RepoName,
+			RepoSuffix:               repoSuffix,
+			CloudName:                s.CloudName,
+			RegionId:                 s.RegionId,
+			Operator:                 s.Operator,
+			BackupType:               s.BackupType,
+			BackupAppTypeName:        s.BackupAppTypeName,
+			BackupFileTypeSourcePath: s.BackupFileTypeSourcePath,
+			RepoEnvs:                 envs,
+			LimitUploadRate:          s.LimitUploadRate,
 		}
 
 		logger.Infof("space backup env vars: %s, traceId: %s", utils.Base64encode([]byte(envs.String())), traceId)
