@@ -17,6 +17,7 @@ import (
 type Location interface {
 	Backup(ctx context.Context, dryRun bool, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error)
 	Restore(ctx context.Context, progressCallback func(percentDone float64)) (map[string]*restic.RestoreSummaryOutput, string, uint64, error)
+	GetSnapshot(ctx context.Context, snapshotId string) (*restic.SnapshotList, error)
 	Snapshots(ctx context.Context) (*restic.SnapshotList, error)
 	Stats(ctx context.Context) (*restic.StatsContainer, error)
 	Regions() ([]map[string]string, error)
@@ -224,6 +225,25 @@ func (h *BaseHandler) Restore(ctx context.Context, progressCallback func(percent
 	return restoreSummarys, metadata, totalBytes, nil
 }
 
+func (h *BaseHandler) GetSnapshot(ctx context.Context, snapshotId string) (*restic.SnapshotList, error) {
+	logger.Debugf("snapshot env vars: %s", utils.Base64encode([]byte(h.opts.RepoEnvs.String())))
+
+	r, err := restic.NewRestic(ctx, h.opts)
+	if err != nil {
+		return nil, err
+	}
+
+	snapshots, err := r.GetSnapshot(snapshotId)
+	if err != nil {
+		return nil, err
+	}
+
+	var list restic.SnapshotList
+	list = append(list, snapshots)
+
+	return &list, nil
+}
+
 func (h *BaseHandler) Snapshots(ctx context.Context) (*restic.SnapshotList, error) {
 	logger.Debugf("snapshots env vars: %s", utils.Base64encode([]byte(h.opts.RepoEnvs.String())))
 
@@ -262,6 +282,14 @@ func (h *BaseHandler) getTags() []string {
 	var tags = []string{
 		fmt.Sprintf("repo-name=%s", utils.Base64encode([]byte(h.opts.RepoName))),
 		fmt.Sprintf("backup-type=%s", h.opts.BackupType),
+	}
+
+	if h.opts.BackupType == constants.BackupTypeApp {
+		tags = append(tags, fmt.Sprintf("backup-app-type-name=%s", utils.Base64encode([]byte(h.opts.BackupAppTypeName))))
+	}
+
+	if h.opts.BackupType == constants.BackupTypeFile {
+		tags = append(tags, fmt.Sprintf("backup-path=%s", utils.Base64encode([]byte(h.opts.BackupFileTypeSourcePath))))
 	}
 
 	if h.opts.Operator != "" {
