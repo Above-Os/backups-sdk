@@ -16,26 +16,28 @@ import (
 )
 
 type Space struct {
-	RepoId            string
-	RepoName          string
-	RepoSuffix        string
-	SnapshotId        string
-	OlaresDid         string
-	AccessToken       string
-	ClusterId         string
-	CloudName         string
-	RegionId          string
-	Password          string
-	Path              string
-	Files             []string
-	FilesPrefixPath   string
-	Metadata          string
-	LimitUploadRate   string
-	LimitDownloadRate string
-	CloudApiMirror    string
-	StsToken          *StsToken
-	Operator          string
-	BackupType        string
+	RepoId                   string
+	RepoName                 string
+	RepoSuffix               string
+	SnapshotId               string
+	OlaresDid                string
+	AccessToken              string
+	ClusterId                string
+	CloudName                string
+	RegionId                 string
+	Password                 string
+	Path                     string
+	Files                    []string
+	FilesPrefixPath          string
+	Metadata                 string
+	LimitUploadRate          string
+	LimitDownloadRate        string
+	CloudApiMirror           string
+	StsToken                 *StsToken
+	Operator                 string
+	BackupType               string
+	BackupAppTypeName        string
+	BackupFileTypeSourcePath string
 }
 
 type StorageResponse struct {
@@ -198,6 +200,14 @@ func (s *Space) getTags() []string {
 	var tags = []string{
 		fmt.Sprintf("repo-name=%s", utils.Base64encode([]byte(s.RepoName))),
 		fmt.Sprintf("backup-type=%s", s.BackupType),
+	}
+
+	if s.BackupType == constants.BackupTypeApp {
+		tags = append(tags, fmt.Sprintf("backup-app-type-name=%s", utils.Base64encode([]byte(s.BackupAppTypeName))))
+	}
+
+	if s.BackupType == constants.BackupTypeFile {
+		tags = append(tags, fmt.Sprintf("backup-path=%s", utils.Base64encode([]byte(s.BackupFileTypeSourcePath))))
 	}
 
 	if s.Operator != "" {

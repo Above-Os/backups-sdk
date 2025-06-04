@@ -16,22 +16,24 @@ import (
 )
 
 type Aws struct {
-	RepoId            string
-	RepoName          string
-	SnapshotId        string
-	Endpoint          string
-	AccessKey         string
-	SecretAccessKey   string
-	Password          string
-	LimitUploadRate   string
-	LimitDownloadRate string
-	Path              string
-	Files             []string
-	FilesPrefixPath   string
-	Metadata          string
-	BaseHandler       base.Interface
-	Operator          string
-	BackupType        string
+	RepoId                   string
+	RepoName                 string
+	SnapshotId               string
+	Endpoint                 string
+	AccessKey                string
+	SecretAccessKey          string
+	Password                 string
+	LimitUploadRate          string
+	LimitDownloadRate        string
+	Path                     string
+	Files                    []string
+	FilesPrefixPath          string
+	Metadata                 string
+	BaseHandler              base.Interface
+	Operator                 string
+	BackupType               string
+	BackupAppTypeName        string
+	BackupFileTypeSourcePath string
 }
 
 func (s *Aws) Backup(ctx context.Context, dryRun bool, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
@@ -42,16 +44,18 @@ func (s *Aws) Backup(ctx context.Context, dryRun bool, progressCallback func(per
 
 	var envs = s.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
-		RepoId:          s.RepoId,
-		RepoName:        s.RepoName,
-		Path:            s.Path,
-		Files:           s.Files,
-		FilesPrefixPath: s.FilesPrefixPath,
-		Metadata:        s.Metadata,
-		LimitUploadRate: s.LimitUploadRate,
-		Operator:        s.Operator,
-		BackupType:      s.BackupType,
-		RepoEnvs:        envs,
+		RepoId:                   s.RepoId,
+		RepoName:                 s.RepoName,
+		Path:                     s.Path,
+		Files:                    s.Files,
+		FilesPrefixPath:          s.FilesPrefixPath,
+		Metadata:                 s.Metadata,
+		LimitUploadRate:          s.LimitUploadRate,
+		Operator:                 s.Operator,
+		BackupType:               s.BackupType,
+		BackupAppTypeName:        s.BackupAppTypeName,
+		BackupFileTypeSourcePath: s.BackupFileTypeSourcePath,
+		RepoEnvs:                 envs,
 	}
 
 	logger.Debugf("s3 backup env vars: %s", utils.Base64encode([]byte(envs.String())))
@@ -100,6 +104,25 @@ func (s *Aws) Snapshots(ctx context.Context) (*restic.SnapshotList, error) {
 
 	s.BaseHandler.SetOptions(opts)
 	return s.BaseHandler.Snapshots(ctx)
+}
+
+func (s *Aws) GetSnapshot(ctx context.Context, snapshotId string) (*restic.SnapshotList, error) {
+	storageInfo, err := s.FormatRepository()
+	if err != nil {
+		return nil, err
+	}
+
+	var envs = s.GetEnv(storageInfo.Url)
+	var opts = &restic.ResticOptions{
+		RepoId:   s.RepoId,
+		RepoName: s.RepoName,
+		RepoEnvs: envs,
+	}
+
+	logger.Debugf("s3 snapshot env vars: %s", utils.Base64encode([]byte(envs.String())))
+
+	s.BaseHandler.SetOptions(opts)
+	return s.BaseHandler.GetSnapshot(ctx, snapshotId)
 }
 
 func (s *Aws) Stats(ctx context.Context) (*restic.StatsContainer, error) {
@@ -168,8 +191,7 @@ func s3format(rawurl string, repoName, repoId string) (bucket, region, prefix, e
 	}
 
 	host := u.Host
-	path := strings.TrimPrefix(u.Path, "/")
-
+	path := strings.Trim(u.Path, "/")
 	parts := strings.Split(host, ".")
 
 	if len(parts) < 3 || parts[len(parts)-2] != "amazonaws" || parts[len(parts)-1] != "com" {

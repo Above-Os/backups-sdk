@@ -18,18 +18,20 @@ import (
 )
 
 type Filesystem struct {
-	RepoId          string
-	RepoName        string
-	SnapshotId      string
-	Endpoint        string
-	Password        string
-	Path            string
-	Files           []string
-	FilesPrefixPath string
-	Metadata        string
-	BaseHandler     base.Interface
-	Operator        string
-	BackupType      string
+	RepoId                   string
+	RepoName                 string
+	SnapshotId               string
+	Endpoint                 string
+	Password                 string
+	Path                     string
+	Files                    []string
+	FilesPrefixPath          string
+	Metadata                 string
+	BaseHandler              base.Interface
+	Operator                 string
+	BackupType               string
+	BackupAppTypeName        string
+	BackupFileTypeSourcePath string
 }
 
 func (f *Filesystem) Backup(ctx context.Context, dryRun bool, progressCallback func(percentDone float64)) (backupSummary *restic.SummaryOutput, storageInfo *model.StorageInfo, err error) {
@@ -40,15 +42,17 @@ func (f *Filesystem) Backup(ctx context.Context, dryRun bool, progressCallback f
 
 	var envs = f.GetEnv(storageInfo.Url)
 	var opts = &restic.ResticOptions{
-		RepoId:          f.RepoId,
-		RepoName:        f.RepoName,
-		Path:            f.Path,
-		Files:           f.Files,
-		FilesPrefixPath: f.FilesPrefixPath,
-		Metadata:        f.Metadata,
-		Operator:        f.Operator,
-		BackupType:      f.BackupType,
-		RepoEnvs:        envs,
+		RepoId:                   f.RepoId,
+		RepoName:                 f.RepoName,
+		Path:                     f.Path,
+		Files:                    f.Files,
+		FilesPrefixPath:          f.FilesPrefixPath,
+		Metadata:                 f.Metadata,
+		Operator:                 f.Operator,
+		BackupType:               f.BackupType,
+		BackupAppTypeName:        f.BackupAppTypeName,
+		BackupFileTypeSourcePath: f.BackupFileTypeSourcePath,
+		RepoEnvs:                 envs,
 	}
 
 	logger.Debugf("fs backup env vars: %s", utils.Base64encode([]byte(envs.String())))
@@ -111,6 +115,25 @@ func (f *Filesystem) Snapshots(ctx context.Context) (*restic.SnapshotList, error
 
 	f.BaseHandler.SetOptions(opts)
 	return f.BaseHandler.Snapshots(ctx)
+}
+
+func (f *Filesystem) GetSnapshot(ctx context.Context, snapshotId string) (*restic.SnapshotList, error) {
+	storageInfo, err := f.FormatRepository()
+	if err != nil {
+		return nil, err
+	}
+
+	var envs = f.GetEnv(storageInfo.Url)
+	var opts = &restic.ResticOptions{
+		RepoId:   f.RepoId,
+		RepoName: f.RepoName,
+		RepoEnvs: envs,
+	}
+
+	logger.Debugf("fs snapshot env vars: %s", utils.Base64encode([]byte(envs.String())))
+
+	f.BaseHandler.SetOptions(opts)
+	return f.BaseHandler.GetSnapshot(ctx, snapshotId)
 }
 
 func (f *Filesystem) Stats(ctx context.Context) (*restic.StatsContainer, error) {

@@ -21,6 +21,7 @@ type SnapshotsOption struct {
 	Basedir      string
 	Password     string
 	Operator     string
+	SnapshotId   string
 	Logger       *zap.SugaredLogger
 	Space        *options.SpaceSnapshotsOption
 	Aws          *options.AwsSnapshotsOption
@@ -66,6 +67,7 @@ func (s *SnapshotsService) Snapshots() (*restic.SnapshotList, error) {
 			CloudApiMirror: s.option.Space.CloudApiMirror,
 			Password:       password,
 			StsToken:       &space.StsToken{},
+			Operator:       s.option.Operator,
 		}
 	} else if s.option.Aws != nil {
 		service = &s3.Aws{
@@ -76,6 +78,7 @@ func (s *SnapshotsService) Snapshots() (*restic.SnapshotList, error) {
 			SecretAccessKey: s.option.Aws.SecretAccessKey,
 			Password:        password,
 			BaseHandler:     &BaseHandler{},
+			Operator:        s.option.Operator,
 		}
 	} else if s.option.TencentCloud != nil {
 		service = &cos.TencentCloud{
@@ -86,6 +89,7 @@ func (s *SnapshotsService) Snapshots() (*restic.SnapshotList, error) {
 			SecretAccessKey: s.option.TencentCloud.SecretAccessKey,
 			Password:        password,
 			BaseHandler:     &BaseHandler{},
+			Operator:        s.option.Operator,
 		}
 	} else if s.option.Filesystem != nil {
 		service = &filesystem.Filesystem{
@@ -94,6 +98,7 @@ func (s *SnapshotsService) Snapshots() (*restic.SnapshotList, error) {
 			Endpoint:    s.option.Filesystem.Endpoint,
 			Password:    password,
 			BaseHandler: &BaseHandler{},
+			Operator:    s.option.Operator,
 		}
 	} else {
 		logger.Fatalf("There is no suitable recovery method.")
@@ -103,10 +108,20 @@ func (s *SnapshotsService) Snapshots() (*restic.SnapshotList, error) {
 	var ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	result, err := service.Snapshots(ctx)
-	if err != nil {
-		logger.Errorf("List Spanshots error: %v", err)
-		return nil, err
+	var result *restic.SnapshotList
+
+	if s.option.SnapshotId != "" {
+		if result, err = service.GetSnapshot(ctx, s.option.SnapshotId); err != nil {
+			logger.Errorf("Get Spanshot error: %v", err)
+			return nil, err
+		}
+	} else {
+		if result, err = service.Snapshots(ctx); err != nil {
+			logger.Errorf("List Spanshots error: %v", err)
+			return nil, err
+		}
 	}
+
 	return result, nil
+
 }
