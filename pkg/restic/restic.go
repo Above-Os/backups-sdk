@@ -104,9 +104,11 @@ type ResticOptions struct {
 	LimitUploadRate   string
 	DryRun            bool
 
-	Operator   string
-	BackupType string
-	RepoEnvs   *ResticEnvs
+	Operator                 string
+	BackupType               string
+	BackupAppTypeName        string
+	BackupFileTypeSourcePath string
+	RepoEnvs                 *ResticEnvs
 }
 
 func (o *ResticOptions) SetLimitUploadRate() string {
@@ -174,6 +176,9 @@ func (r *Restic) Init() (string, error) {
 			outerr = MESSAGE_REPOSITORY_ALREADY_INITIALIZED
 		// case strings.Contains(errmsg, ERROR_MESSAGE_UNABLE_TO_OPEN_REPOSITORY.Error()):
 		// 	outerr = MESSAGE_TOKEN_EXPIRED
+		case strings.Contains(errmsg, ERROR_MESSAGE_HOST_IS_DOWN.Error()):
+			outerr = ERROR_MESSAGE_HOST_IS_DOWN_MESSAGE.Error()
+
 		default:
 			outerr = errmsg
 		}
@@ -779,10 +784,8 @@ func (r *Restic) Restore(snapshotId string, subfolder string, target string, pro
 						errorMsg = ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE_MESSAGE
 						c.Cancel()
 						return
-					// case strings.Contains(msg, "path") && strings.Contains(msg, "not found"):
-					// 	errorMsg = RESTIC_ERROR_MESSAGE("")
-					// 	c.Cancel()
-					// 	return
+					case strings.Contains(msg, "path") && strings.Contains(msg, "not found"):
+						continue
 					default:
 						errorMsg = RESTIC_ERROR_MESSAGE(msg)
 						c.Cancel()
