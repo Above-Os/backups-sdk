@@ -167,25 +167,15 @@ func (r *Restic) Init() (string, error) {
 	cmd := exec.CommandContext(r.ctx, r.dir, r.args...)
 	cmd.Env = append(cmd.Env, r.opt.RepoEnvs.Slice()...)
 	logger.Infof("[Cmd] %s", cmd.String())
-	var outerr string
+	var outerr RESTIC_ERROR_MESSAGE
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		var errmsg = string(output)
-		switch {
-		case strings.Contains(errmsg, ERROR_MESSAGE_ALREADY_INITIALIZED.Error()), strings.Contains(errmsg, ERROR_MESSAGE_CONFIG_FILE_ALREADY_EXISTS.Error()):
-			outerr = MESSAGE_REPOSITORY_ALREADY_INITIALIZED
-		// case strings.Contains(errmsg, ERROR_MESSAGE_UNABLE_TO_OPEN_REPOSITORY.Error()):
-		// 	outerr = MESSAGE_TOKEN_EXPIRED
-		case strings.Contains(errmsg, ERROR_MESSAGE_HOST_IS_DOWN.Error()):
-			outerr = ERROR_MESSAGE_HOST_IS_DOWN_MESSAGE.Error()
-
-		default:
-			outerr = errmsg
-		}
+		outerr, _ = r.formatErrorMessage(errmsg)
 	}
 
-	if outerr != "" {
-		return "", errors.New(outerr)
+	if outerr.Error() != "" {
+		return "", errors.New(outerr.Error())
 	}
 
 	return string(output), nil
@@ -342,6 +332,7 @@ func (r *Restic) Backup(folder string, files []string, filePathPrefix string, ta
 	var finished bool
 	var summary *SummaryOutput
 	var errorMsg RESTIC_ERROR_MESSAGE
+	var continued bool
 
 	go func() {
 		for {
@@ -362,47 +353,13 @@ func (r *Restic) Backup(folder string, files []string, filePathPrefix string, ta
 					var msg = string(res)
 					logger.Errorf("[restic] backup %s error message: %s, traceId: %s", r.opt.RepoName, msg, traceId)
 					messagePool.Put(status)
-					switch {
-					case strings.Contains(msg, ERROR_MESSAGE_TOKEN_EXPIRED.Error()),
-						strings.Contains(msg, ERROR_MESSAGE_COS_TOKEN_EXPIRED.Error()):
-						errorMsg = RESTIC_ERROR_MESSAGE(ERROR_MESSAGE_TOKEN_EXPIRED.ToLower())
-						c.Cancel()
-						return
-					case strings.Contains(msg, ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE.Error()):
-						errorMsg = ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE_MESSAGE
-						c.Cancel()
-						return
-					case strings.Contains(msg, ERROR_MESSAGE_SERVER_MISBEHAVING.Error()):
-						errorMsg = ERROR_MESSAGE_SERVER_MISBEHAVING_MESSAGE
-						c.Cancel()
-						return
-					case strings.Contains(msg, ERROR_MESSAGE_ACCESS_DENIED.Error()):
-						errorMsg = ERROR_MESSAGE_ACCESS_DENIED_MESSAGE
-						c.Cancel()
-						return
-					case strings.Contains(msg, ERROR_MESSAGE_NO_SUCH_DEVICE.Error()):
-						errorMsg = ERROR_MESSAGE_NO_SUCH_DEVICE_MESSAGE
-						c.Cancel()
-						return
-					case strings.Contains(msg, ERROR_MESSAGE_HOST_IS_DOWN.Error()):
-						errorMsg = ERROR_MESSAGE_HOST_IS_DOWN_MESSAGE
-						c.Cancel()
-						return
-					case strings.Contains(msg, ERROR_MESSAGE_COS_ACCOUNT_ARREARS.Error()):
-						errorMsg = ERROR_MESSAGE_COS_ACCOUNT_ARREARS_MESSAGE
-						c.Cancel()
-						return
-					case strings.Contains(msg, ERROR_MESSAGE_REPOSITORY_BE_DAMAGED.Error()):
-						errorMsg = ERROR_MESSAGE_REPOSITORY_BE_DAMAGED_MESSAGE
-						c.Cancel()
-						return
-					case strings.Contains(msg, ERROR_MESSAGE_FILES_NOT_FOUND.Error()):
+
+					errorMsg, continued = r.formatErrorMessage(msg)
+					if continued {
 						continue
-					default:
-						errorMsg = RESTIC_ERROR_MESSAGE(msg)
-						c.Cancel()
-						return
 					}
+					c.Cancel()
+					return
 				}
 				switch status.MessageType {
 				case "status":
@@ -752,6 +709,7 @@ func (r *Restic) Restore(snapshotId string, subfolder string, target string, pro
 	var finished bool
 	var summary *RestoreSummaryOutput
 	var errorMsg RESTIC_ERROR_MESSAGE
+	var continued bool
 
 	go func() {
 		for {
@@ -774,23 +732,13 @@ func (r *Restic) Restore(snapshotId string, subfolder string, target string, pro
 					logger.Debugf("[restic] restore %s error message: %s", r.opt.RepoName, msg)
 					restoreMessagePool.Put(status)
 
-					switch {
-					case strings.Contains(msg, ERROR_MESSAGE_TOKEN_EXPIRED.Error()),
-						strings.Contains(msg, ERROR_MESSAGE_COS_TOKEN_EXPIRED.Error()):
-						errorMsg = RESTIC_ERROR_MESSAGE(ERROR_MESSAGE_TOKEN_EXPIRED.ToLower())
-						c.Cancel()
-						return
-					case strings.Contains(msg, ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE.Error()):
-						errorMsg = ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE_MESSAGE
-						c.Cancel()
-						return
-					case strings.Contains(msg, "path") && strings.Contains(msg, "not found"):
+					errorMsg, continued = r.formatErrorMessage(msg)
+					if continued {
 						continue
-					default:
-						errorMsg = RESTIC_ERROR_MESSAGE(msg)
-						c.Cancel()
-						return
 					}
+
+					c.Cancel()
+					return
 				}
 				switch status.MessageType {
 				case "status":
@@ -946,6 +894,42 @@ func (r *Restic) formatBackupFiles(files []string) ([]string, error) {
 
 func (r *Restic) trimError(s string) string {
 	return strings.ReplaceAll(s, "Fatal: ", "")
+}
+
+func (r *Restic) formatErrorMessage(msg string) (RESTIC_ERROR_MESSAGE, bool) {
+	var errorMsg RESTIC_ERROR_MESSAGE
+	var continued bool = false
+	switch {
+	case strings.Contains(msg, ERROR_MESSAGE_ALREADY_INITIALIZED.Error()), strings.Contains(msg, ERROR_MESSAGE_CONFIG_FILE_ALREADY_EXISTS.Error()):
+		errorMsg = MESSAGE_REPOSITORY_ALREADY_INITIALIZED // Init
+	case strings.Contains(msg, ERROR_MESSAGE_TOKEN_EXPIRED.Error()),
+		strings.Contains(msg, ERROR_MESSAGE_COS_TOKEN_EXPIRED.Error()):
+		errorMsg = RESTIC_ERROR_MESSAGE(ERROR_MESSAGE_TOKEN_EXPIRED.ToLower())
+	case strings.Contains(msg, ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE.Error()):
+		errorMsg = ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE_MESSAGE
+	case strings.Contains(msg, ERROR_MESSAGE_SERVER_MISBEHAVING.Error()):
+		errorMsg = ERROR_MESSAGE_SERVER_MISBEHAVING_MESSAGE
+	case strings.Contains(msg, ERROR_MESSAGE_ACCESS_DENIED.Error()):
+		errorMsg = ERROR_MESSAGE_ACCESS_DENIED_MESSAGE
+	case strings.Contains(msg, ERROR_MESSAGE_NO_SUCH_DEVICE.Error()):
+		errorMsg = ERROR_MESSAGE_NO_SUCH_DEVICE_MESSAGE
+	case strings.Contains(msg, ERROR_MESSAGE_HOST_IS_DOWN.Error()):
+		errorMsg = ERROR_MESSAGE_HOST_IS_DOWN_MESSAGE
+	case strings.Contains(msg, ERROR_MESSAGE_COS_ACCOUNT_ARREARS.Error()):
+		errorMsg = ERROR_MESSAGE_COS_ACCOUNT_ARREARS_MESSAGE
+	case strings.Contains(msg, ERROR_MESSAGE_REPOSITORY_BE_DAMAGED.Error()):
+		errorMsg = ERROR_MESSAGE_REPOSITORY_BE_DAMAGED_MESSAGE
+	case strings.Contains(msg, ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE.Error()):
+		errorMsg = ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE_MESSAGE
+	case strings.Contains(msg, "path") && strings.Contains(msg, "not found"):
+		continued = true
+	case strings.Contains(msg, ERROR_MESSAGE_FILES_NOT_FOUND.Error()):
+		continued = true
+	default:
+		errorMsg = RESTIC_ERROR_MESSAGE(msg)
+	}
+
+	return errorMsg, continued
 }
 
 var messagePool *statusMessagePool
