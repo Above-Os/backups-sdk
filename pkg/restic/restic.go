@@ -39,6 +39,7 @@ const (
 	ERROR_MESSAGE_WRONG_PASSWORD_OR_NO_KEY_FOUND     RESTIC_ERROR_MESSAGE = "wrong password or no key found"
 	ERROR_MESSAGE_WRONG_PASSWORD                     RESTIC_ERROR_MESSAGE = "Wrong backup password."
 	ERROR_MESSAGE_REPOSITORY_DOES_NOT_EXIST          RESTIC_ERROR_MESSAGE = "repository does not exist: unable to open config file"
+	ERROR_MESSAGE_REPOSITORY_DOES_NOT_EXIST_MESSAGE  RESTIC_ERROR_MESSAGE = "Unable to locate the configuration file. Please provide the correct storage path."
 	ERROR_MESSAGE_BACKUP_CANCELED                    RESTIC_ERROR_MESSAGE = "backup canceled"
 	ERROR_MESSAGE_RESTORE_CANCELED                   RESTIC_ERROR_MESSAGE = "restore canceled"
 	ERROR_MESSAGE_FILES_NOT_FOUND                    RESTIC_ERROR_MESSAGE = "does not match any files"
@@ -49,10 +50,12 @@ const (
 	ERROR_MESSAGE_COS_ACCOUNT_ARREARS                RESTIC_ERROR_MESSAGE = "Due to your account is arrears, it is unavailable until you recharge."
 	ERROR_MESSAGE_COS_ACCOUNT_ARREARS_MESSAGE        RESTIC_ERROR_MESSAGE = "Your cloud storage account is overdue and the service is temporarily unavailable. Please recharge to continue."
 	ERROR_MESSAGE_NO_SUCH_DEVICE                     RESTIC_ERROR_MESSAGE = "no such device"
+	ERROR_MESSAGE_NO_SUCH_FILE_OR_DIRECTORY          RESTIC_ERROR_MESSAGE = "no such file or directory"
 	ERROR_MESSAGE_NO_SUCH_DEVICE_MESSAGE             RESTIC_ERROR_MESSAGE = "No storage device found."
 	ERROR_MESSAGE_HOST_IS_DOWN                       RESTIC_ERROR_MESSAGE = "host is down"
 	ERROR_MESSAGE_HOST_IS_DOWN_MESSAGE               RESTIC_ERROR_MESSAGE = "SMB host down."
 	ERROR_MESSAGE_NO_SPACE_LEFT_ON_DEVICE            RESTIC_ERROR_MESSAGE = "no space left on device"
+	ERROR_MESSAGE_NO_SPACE_LEFT_ON_DEVICE_MESSAGE    RESTIC_ERROR_MESSAGE = "Insufficient storage."
 	ERROR_MESSAGE_ACCESS_DENIED                      RESTIC_ERROR_MESSAGE = "Access Denied"
 	ERROR_MESSAGE_ACCESS_DENIED_MESSAGE              RESTIC_ERROR_MESSAGE = "Access denied. Please provide the correct access key."
 )
@@ -387,14 +390,14 @@ func (r *Restic) Backup(folder string, files []string, filePathPrefix string, ta
 						prevPercent = status.PercentDone
 					}
 				case "error":
+					var continued bool
 					errObj := new(ErrorUpdate)
 					if err := json.Unmarshal(res, &errObj); err != nil {
 						errorMsg = RESTIC_ERROR_MESSAGE(err.Error())
 					} else {
-						if strings.Contains(errObj.Error.Message, ERROR_MESSAGE_NO_SPACE_LEFT_ON_DEVICE.Error()) {
-							errorMsg = ERROR_MESSAGE_NO_SPACE_LEFT_ON_DEVICE
-						} else {
-							errorMsg = RESTIC_ERROR_MESSAGE(errObj.Error.Message)
+						errorMsg, continued = r.formatErrorMessage(errObj.Error.Message)
+						if continued {
+							continue
 						}
 					}
 					messagePool.Put(status)
@@ -648,20 +651,8 @@ func (r *Restic) GetSnapshots(tags []string) (*SnapshotList, error) {
 				var msg = string(res)
 				logger.Debugf("[restic] snapshots %s message: %s", r.opt.RepoName, msg)
 				if strings.Contains(msg, "Fatal: ") {
-					switch {
-					case strings.Contains(msg, ERROR_MESSAGE_SNAPSHOT_NOT_FOUND.Error()):
-						errorMsg = ERROR_MESSAGE_SNAPSHOT_NOT_FOUND
-						return
-					case strings.Contains(msg, ERROR_MESSAGE_WRONG_PASSWORD_OR_NO_KEY_FOUND.Error()):
-						errorMsg = ERROR_MESSAGE_WRONG_PASSWORD_OR_NO_KEY_FOUND
-						return
-					case strings.Contains(msg, ERROR_MESSAGE_REPOSITORY_DOES_NOT_EXIST.Error()):
-						errorMsg = ERROR_MESSAGE_REPOSITORY_DOES_NOT_EXIST
-						return
-					default:
-						errorMsg = RESTIC_ERROR_MESSAGE(r.trimError(msg))
-						return
-					}
+					errorMsg, _ = r.formatErrorMessage(msg)
+					return
 				}
 				if err := json.Unmarshal(res, &summary); err != nil {
 					errorMsg = RESTIC_ERROR_MESSAGE(r.trimError(err.Error()))
@@ -902,6 +893,8 @@ func (r *Restic) formatErrorMessage(msg string) (RESTIC_ERROR_MESSAGE, bool) {
 	switch {
 	case strings.Contains(msg, ERROR_MESSAGE_ALREADY_INITIALIZED.Error()), strings.Contains(msg, ERROR_MESSAGE_CONFIG_FILE_ALREADY_EXISTS.Error()):
 		errorMsg = MESSAGE_REPOSITORY_ALREADY_INITIALIZED // Init
+	case strings.Contains(msg, ERROR_MESSAGE_SNAPSHOT_NOT_FOUND.Error()):
+		errorMsg = ERROR_MESSAGE_SNAPSHOT_NOT_FOUND
 	case strings.Contains(msg, ERROR_MESSAGE_TOKEN_EXPIRED.Error()),
 		strings.Contains(msg, ERROR_MESSAGE_COS_TOKEN_EXPIRED.Error()):
 		errorMsg = RESTIC_ERROR_MESSAGE(ERROR_MESSAGE_TOKEN_EXPIRED.ToLower())
@@ -921,9 +914,15 @@ func (r *Restic) formatErrorMessage(msg string) (RESTIC_ERROR_MESSAGE, bool) {
 		errorMsg = ERROR_MESSAGE_REPOSITORY_BE_DAMAGED_MESSAGE
 	case strings.Contains(msg, ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE.Error()):
 		errorMsg = ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE_MESSAGE
-	case strings.Contains(msg, "path") && strings.Contains(msg, "not found"):
-		continued = true
-	case strings.Contains(msg, ERROR_MESSAGE_FILES_NOT_FOUND.Error()):
+	case strings.Contains(msg, ERROR_MESSAGE_NO_SPACE_LEFT_ON_DEVICE.Error()):
+		errorMsg = ERROR_MESSAGE_NO_SPACE_LEFT_ON_DEVICE_MESSAGE
+	case strings.Contains(msg, ERROR_MESSAGE_WRONG_PASSWORD_OR_NO_KEY_FOUND.Error()):
+		errorMsg = ERROR_MESSAGE_WRONG_PASSWORD
+	case strings.Contains(msg, ERROR_MESSAGE_REPOSITORY_DOES_NOT_EXIST.Error()):
+		errorMsg = ERROR_MESSAGE_REPOSITORY_DOES_NOT_EXIST_MESSAGE
+	case strings.Contains(msg, "path") && strings.Contains(msg, "not found"),
+		strings.Contains(msg, ERROR_MESSAGE_FILES_NOT_FOUND.Error()),
+		strings.Contains(msg, ERROR_MESSAGE_NO_SUCH_FILE_OR_DIRECTORY.Error()):
 		continued = true
 	default:
 		errorMsg = RESTIC_ERROR_MESSAGE(msg)
