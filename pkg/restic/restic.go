@@ -49,6 +49,7 @@ const (
 	ERROR_MESSAGE_REPOSITORY_BE_DAMAGED_MESSAGE      RESTIC_ERROR_MESSAGE = "The repository might be corrupted. Please retry the snapshot task."
 	ERROR_MESSAGE_COS_ACCOUNT_ARREARS                RESTIC_ERROR_MESSAGE = "Due to your account is arrears, it is unavailable until you recharge."
 	ERROR_MESSAGE_COS_ACCOUNT_ARREARS_MESSAGE        RESTIC_ERROR_MESSAGE = "Your cloud storage account is overdue and the service is temporarily unavailable. Please recharge to continue."
+	ERROR_MESSAGE_RESOURCE_TEMPORARILY_UNAVAILABLE   RESTIC_ERROR_MESSAGE = "resource temporarily unavailable"
 	ERROR_MESSAGE_NO_SUCH_DEVICE                     RESTIC_ERROR_MESSAGE = "no such device"
 	ERROR_MESSAGE_NO_SUCH_FILE_OR_DIRECTORY          RESTIC_ERROR_MESSAGE = "no such file or directory"
 	ERROR_MESSAGE_NO_SUCH_DEVICE_MESSAGE             RESTIC_ERROR_MESSAGE = "No storage device found."
@@ -191,7 +192,7 @@ func (r *Restic) Rollback() error {
 		Jitter:   0.1,
 		Steps:    10,
 	}
-
+	var errorMsg RESTIC_ERROR_MESSAGE
 	if err := retry.OnError(backoff, func(err error) bool {
 		return true
 	}, func() error {
@@ -200,9 +201,13 @@ func (r *Restic) Rollback() error {
 			r.Unlock()
 			return fmt.Errorf("retry")
 		}
+		errorMsg, _ = r.formatErrorMessage(res)
 		return nil
 	}); err != nil {
 		return err
+	}
+	if errorMsg.Error() != "" {
+		return errorMsg
 	}
 	return nil
 }
@@ -912,6 +917,8 @@ func (r *Restic) formatErrorMessage(msg string) (RESTIC_ERROR_MESSAGE, bool) {
 		errorMsg = ERROR_MESSAGE_COS_ACCOUNT_ARREARS_MESSAGE
 	case strings.Contains(msg, ERROR_MESSAGE_REPOSITORY_BE_DAMAGED.Error()):
 		errorMsg = ERROR_MESSAGE_REPOSITORY_BE_DAMAGED_MESSAGE
+	case strings.Contains(msg, ERROR_MESSAGE_RESOURCE_TEMPORARILY_UNAVAILABLE.Error()):
+		errorMsg = ERROR_MESSAGE_HOST_IS_DOWN_MESSAGE
 	case strings.Contains(msg, ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE.Error()):
 		errorMsg = ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE_MESSAGE
 	case strings.Contains(msg, ERROR_MESSAGE_NO_SPACE_LEFT_ON_DEVICE.Error()):

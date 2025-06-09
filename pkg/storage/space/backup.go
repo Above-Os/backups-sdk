@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pkg/errors"
 	"olares.com/backups-sdk/pkg/constants"
 	"olares.com/backups-sdk/pkg/logger"
 	"olares.com/backups-sdk/pkg/restic"
@@ -137,10 +136,13 @@ func (s *Space) Backup(ctx context.Context, dryRun bool, progressCallback func(p
 					}
 				}
 
-				e := r.Rollback()
-				if e != nil {
-					err = errors.Wrap(err, e.Error())
+				if e := r.Rollback(); e != nil {
+					logger.Errorf("space rollbackup error: %v, traceId: %s", e, traceId)
 				}
+				// e := r.Rollback()
+				// if e != nil {
+				// 	err = errors.Wrap(err, e.Error())
+				// }
 			}
 			break
 		}
