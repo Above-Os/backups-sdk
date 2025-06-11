@@ -103,8 +103,11 @@ func (d *BaseHandler) Backup(ctx context.Context, dryRun bool, progressCallback 
 	if err != nil {
 		err = errors.WithStack(err)
 		if e := r.Rollback(); e != nil {
-			err = errors.Wrap(err, e.Error())
+			logger.Errorf("rollbackup error: %v, traceId: %s", e, traceId)
 		}
+		// if e := r.Rollback(); e != nil {
+		// 	err = errors.Wrap(err, e.Error())
+		// }
 		return
 	}
 
@@ -164,13 +167,13 @@ func (h *BaseHandler) Restore(ctx context.Context, progressCallback func(percent
 
 	logger.Infof("restore spanshot: %s, backupType: %s, paths: %d, tags: %v, summary %s", snapshotSummary.Id, backupType, len(snapshotSummary.Paths), snapshotSummary.Tags, utils.ToJSON(snapshotSummary.Summary))
 
-	if backupType == constants.BackupTypeFile {
+	uploadPaths, err = util.GetFilesPrefixPath(snapshotSummary.Tags)
+	if err != nil {
+		return nil, metadata, totalBytes, err
+	}
+
+	if uploadPaths == nil || len(uploadPaths) == 0 {
 		uploadPaths = append(uploadPaths, snapshotSummary.Paths[0])
-	} else {
-		uploadPaths, err = util.GetFilesPrefixPath(snapshotSummary.Tags)
-		if err != nil {
-			return nil, metadata, totalBytes, err
-		}
 	}
 
 	var progressChan = make(chan float64, 100)
