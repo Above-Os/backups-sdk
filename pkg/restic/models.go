@@ -176,8 +176,8 @@ type RestoreStatusUpdate struct {
 	BytesSkipped   uint64  `json:"bytes_skipped,omitempty"`
 }
 
-func (s *RestoreStatusUpdate) GetPercentDone() string {
-	return fmt.Sprintf("%.2f%%", s.PercentDone*100)
+func (s *RestoreStatusUpdate) GetPercentDone(phase, total int) float64 {
+	return (s.PercentDone / float64(total)) + float64(1.0*phase)/float64(total)
 }
 
 type RestoreVerboseUpdate struct {

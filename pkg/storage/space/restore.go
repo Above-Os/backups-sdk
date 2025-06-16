@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"olares.com/backups-sdk/pkg/constants"
 	"olares.com/backups-sdk/pkg/logger"
 	"olares.com/backups-sdk/pkg/restic"
 	"olares.com/backups-sdk/pkg/storage/util"
@@ -79,34 +78,21 @@ func (s *Space) Restore(ctx context.Context, progressCallback func(percentDone f
 
 		logger.Infof("space restore spanshot: %s, backupType: %s, paths: %d, tags: %v, summary %s", currentSnapshot.Id, backupType, len(currentSnapshot.Paths), currentSnapshot.Tags, utils.ToJSON(currentSnapshot.Summary))
 
-		if backupType == constants.BackupTypeFile {
+		uploadPaths, _ = util.GetFilesPrefixPath(currentSnapshot.Tags)
+		if uploadPaths == nil || len(uploadPaths) == 0 {
 			uploadPaths = append(uploadPaths, currentSnapshot.Paths[0])
-		} else {
-			uploadPaths, err = util.GetFilesPrefixPath(currentSnapshot.Tags)
-			if err != nil {
-				break
-			}
 		}
-
-		// var backupPath = currentSnapshot.Paths[0]
-
-		// for _, tag := range currentSnapshot.Tags {
-		// 	if tag == "content-type=files" {
-		// 		backupPath = ""
-		// 		break
-		// 	}
-		// }
 
 		// logger.Infof("space restore spanshot %s detail: %s", s.SnapshotId, utils.ToJSON(currentSnapshot))
 
-		for _, uploadPath := range uploadPaths {
+		for phase, uploadPath := range uploadPaths {
 			var rs *restic.RestoreSummaryOutput
 			var backupTrimPath, targetPath = util.GetRestoreTargetPath(backupType, restoreTargetPath, uploadPath)
 			if err = util.Chmod(targetPath); err != nil {
 				err = fmt.Errorf("space restore %s snapshot %s, backupType: %s, subfolder: %s, create target directory error: %v", s.RepoName, s.SnapshotId, backupType, uploadPath, err)
 				break
 			}
-			rs, err = r.Restore(s.SnapshotId, backupTrimPath, targetPath, progressChan)
+			rs, err = r.Restore(phase, len(uploadPaths), s.SnapshotId, backupTrimPath, targetPath, progressChan)
 			if err != nil {
 				switch err.Error() {
 				case restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error():
@@ -120,8 +106,10 @@ func (s *Space) Restore(ctx context.Context, progressCallback func(percentDone f
 					break
 				}
 			}
-			restoreSummarys[uploadPath] = rs
-			totalBytesTmp += rs.TotalBytes
+			if rs != nil {
+				restoreSummarys[uploadPath] = rs
+				totalBytesTmp += rs.TotalBytes
+			}
 		}
 
 		break

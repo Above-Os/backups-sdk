@@ -682,7 +682,7 @@ func (r *Restic) GetSnapshots(tags []string) (*SnapshotList, error) {
 	return summary, nil
 }
 
-func (r *Restic) Restore(snapshotId string, subfolder string, target string, progressChan chan float64) (*RestoreSummaryOutput, error) {
+func (r *Restic) Restore(phase int, total int, snapshotId string, subfolder string, target string, progressChan chan float64) (*RestoreSummaryOutput, error) {
 	if subfolder != "" {
 		subfolder = fmt.Sprintf("%s:%s", snapshotId, subfolder)
 	} else {
@@ -743,24 +743,24 @@ func (r *Restic) Restore(snapshotId string, subfolder string, target string, pro
 						if !started {
 							logger.Infof(PRINT_RESTORE_START_MESSAGE, status.TotalFiles, utils.FormatBytes(status.TotalBytes))
 							started = true
-							progressChan <- status.PercentDone
+							progressChan <- status.GetPercentDone(phase, total)
 						}
 					case math.Abs(status.PercentDone-1.0) < tolerance:
 						if !finished {
 							logger.Infof(PRINT_RESTORE_FINISH_MESSAGE, snapshotId, status.TotalFiles, status.FilesRestored, utils.FormatBytes(status.TotalBytes), utils.FormatBytes(status.BytesRestored))
 							finished = true
-							progressChan <- status.PercentDone
+							progressChan <- status.GetPercentDone(phase, total)
 						}
 					default:
 						if prevPercent != status.PercentDone {
 							logger.Infof(PRINT_RESTORE_PROGRESS_MESSAGE,
-								status.GetPercentDone(),
+								fmt.Sprintf("%.2f%%", status.GetPercentDone(phase, total)*100),
 								status.FilesRestored,
 								status.TotalFiles,
 								utils.FormatBytes(status.BytesRestored),
 								utils.FormatBytes(status.TotalBytes),
 							)
-							progressChan <- status.PercentDone
+							progressChan <- status.GetPercentDone(phase, total)
 						}
 						prevPercent = status.PercentDone
 					}

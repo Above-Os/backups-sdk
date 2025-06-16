@@ -167,11 +167,7 @@ func (h *BaseHandler) Restore(ctx context.Context, progressCallback func(percent
 
 	logger.Infof("restore spanshot: %s, backupType: %s, paths: %d, tags: %v, summary %s", snapshotSummary.Id, backupType, len(snapshotSummary.Paths), snapshotSummary.Tags, utils.ToJSON(snapshotSummary.Summary))
 
-	uploadPaths, err = util.GetFilesPrefixPath(snapshotSummary.Tags)
-	if err != nil {
-		return nil, metadata, totalBytes, err
-	}
-
+	uploadPaths, _ = util.GetFilesPrefixPath(snapshotSummary.Tags)
 	if uploadPaths == nil || len(uploadPaths) == 0 {
 		uploadPaths = append(uploadPaths, snapshotSummary.Paths[0])
 	}
@@ -187,19 +183,19 @@ func (h *BaseHandler) Restore(ctx context.Context, progressCallback func(percent
 				if !ok {
 					return
 				}
-				progressCallback(progress) // todo
+				progressCallback(progress)
 			}
 		}
 	}()
 
-	for _, uploadPath := range uploadPaths {
+	for phase, uploadPath := range uploadPaths {
 		var rs *restic.RestoreSummaryOutput
 		var backupTrimPath, targetPath = util.GetRestoreTargetPath(backupType, restoreTargetPath, uploadPath)
 		if err = util.Chmod(targetPath); err != nil {
 			err = fmt.Errorf("restore %s snapshot %s, backupType: %s, subfolder: %s, create target directory error: %v", h.opts.RepoName, h.opts.SnapshotId, backupType, uploadPath, err)
 			break
 		}
-		rs, err = re.Restore(snapshotId, backupTrimPath, targetPath, progressChan)
+		rs, err = re.Restore(phase, len(uploadPaths), snapshotId, backupTrimPath, targetPath, progressChan)
 		if err != nil {
 			logger.Errorf("restore %s snapshot %s, backupType: %s, subfolder: %s, error: %v", h.opts.RepoName, h.opts.SnapshotId, backupType, uploadPath, err)
 			break
