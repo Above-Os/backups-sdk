@@ -177,7 +177,7 @@ func (c *TencentCloud) FormatRepository() (storageInfo *model.StorageInfo, err e
 		return
 	}
 
-	var endpoint = strings.TrimRight(c.Endpoint, "/")
+	var endpoint = c.Endpoint
 
 	cosUrlInfo, err := url.Parse(endpoint)
 	if err != nil {
@@ -185,36 +185,53 @@ func (c *TencentCloud) FormatRepository() (storageInfo *model.StorageInfo, err e
 	}
 
 	var host = cosUrlInfo.Host
-	var hosts = strings.Split(host, ".")
-	if len(hosts) != 4 {
+	var bucket, region, prefix string
+
+	if !strings.Contains(host, constants.StorageTencentDoman) {
 		return nil, fmt.Errorf("host invalid, host: %s", host)
 	}
 
-	if !strings.Contains(host, constants.StorageTencentDoman) {
-		return nil, fmt.Errorf("host is not cos format, host: %s", host)
+	var hosts = strings.Split(host, ".")
+	if len(hosts) != 4 && len(hosts) != 5 {
+		return nil, fmt.Errorf("host invalid, host: %s, support format like: https://cos.MY_REGION.myqcloud.com/MY_BUCKET_NAME/PREFIX_PATH, https://MY_BUCKET_NAME.cos.MY_REGION.myqcloud.com/PREFIX_PATH", host)
 	}
-
-	var region = hosts[1]
 
 	var path = strings.Trim(cosUrlInfo.Path, "/")
 	var paths = strings.Split(path, "/")
-	if len(paths) == 0 {
+	if len(paths) < 1 {
 		return nil, fmt.Errorf("bucket not exists, path: %s", path)
 	}
 
-	var bucket = paths[0]
-	var prefix string = constants.OlaresStorageDefaultPrefix
-	if len(paths) > 1 {
-		prefix = fmt.Sprintf("%s/%s", strings.Join(paths[1:], "/"), constants.OlaresStorageDefaultPrefix)
+	if len(hosts) == 4 { // cos.MY_REGION.myqcloud.com/MY_BUCKET_NAME
+		bucket = paths[0]
+		region = hosts[1]
+		if len(paths) > 1 {
+			prefix = fmt.Sprintf("%s/%s", strings.Join(paths[1:], "/"), constants.OlaresStorageDefaultPrefix)
+		} else {
+			prefix = constants.OlaresStorageDefaultPrefix
+		}
+	} else { // MY_BUCKET_NAME.cos.MY_REGION.myqcloud.com
+		bucket = hosts[0]
+		region = hosts[2]
+		var s = strings.Join(paths[0:], "/")
+		if s == "" {
+			prefix = constants.OlaresStorageDefaultPrefix
+		} else {
+			prefix = fmt.Sprintf("%s/%s", s, constants.OlaresStorageDefaultPrefix)
+		}
 	}
 
-	var repository = fmt.Sprintf("s3:%s://%s/%s/%s/%s", cosUrlInfo.Scheme, cosUrlInfo.Host, bucket, prefix, utils.JoinName(utils.EncodeURLPart(c.RepoName), c.RepoId))
+	var repository = fmt.Sprintf("s3:%s://cos.%s.%s/%s/%s/%s",
+		cosUrlInfo.Scheme, region, constants.StorageTencentDoman,
+		bucket, prefix,
+		utils.JoinName(utils.EncodeURLPart(c.RepoName), c.RepoId),
+	)
 
 	c.CloudName = constants.CloudTencentName
 	c.RegionId = region
 
 	storageInfo = &model.StorageInfo{
-		Location:  "tencentcloud",
+		Location:  constants.CloudTencentName,
 		Url:       repository,
 		CloudName: constants.CloudTencentName,
 		RegionId:  region,

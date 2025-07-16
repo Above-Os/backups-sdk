@@ -6,6 +6,7 @@ toolchain go1.22.4
 
 require (
 	github.com/emicklei/go-restful/v3 v3.12.1
+	github.com/go-playground/assert/v2 v2.2.0
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/google/uuid v1.1.2
 	github.com/joho/godotenv v1.5.1
