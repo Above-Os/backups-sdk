@@ -12,7 +12,7 @@ import (
 
 func Post[T any](ctx context.Context, url string, headers map[string]string, data interface{}) (*T, error) {
 	var result T
-	client := resty.New().SetTimeout(10 * time.Second).
+	client := resty.New().SetTimeout(60 * time.Second).
 		SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}).R().SetDebug(true)
 
 	if headers != nil {

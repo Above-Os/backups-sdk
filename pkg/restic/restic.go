@@ -902,7 +902,7 @@ func (r *Restic) formatErrorMessage(msg string) (RESTIC_ERROR_MESSAGE, bool) {
 		errorMsg = ERROR_MESSAGE_SNAPSHOT_NOT_FOUND
 	case strings.Contains(msg, ERROR_MESSAGE_TOKEN_EXPIRED.Error()),
 		strings.Contains(msg, ERROR_MESSAGE_COS_TOKEN_EXPIRED.Error()):
-		errorMsg = RESTIC_ERROR_MESSAGE(ERROR_MESSAGE_TOKEN_EXPIRED.ToLower())
+		errorMsg = RESTIC_ERROR_MESSAGE(ERROR_MESSAGE_TOKEN_EXPIRED)
 	case strings.Contains(msg, ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE.Error()):
 		errorMsg = ERROR_MESSAGE_UNABLE_TO_OPEN_CONFIG_FILE_MESSAGE
 	case strings.Contains(msg, ERROR_MESSAGE_SERVER_MISBEHAVING.Error()):
