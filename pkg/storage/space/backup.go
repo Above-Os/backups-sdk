@@ -111,6 +111,7 @@ func (s *Space) Backup(ctx context.Context, dryRun bool, progressCallback func(p
 
 		backupSummary, err = r.Backup(s.Path, s.Files, "", tags, traceId, dryRun, progressChan)
 		if err != nil {
+			logger.Infof("space backup error: %v, traceId: %s", err, traceId)
 			// switch err.Error() {
 			// case restic.ERROR_MESSAGE_BACKUP_CANCELED.Error():
 			// 	logger.Infof("backup canceled, stopping..., traceId: %s", traceId)
@@ -127,7 +128,7 @@ func (s *Space) Backup(ctx context.Context, dryRun bool, progressCallback func(p
 			// }
 
 			if !dryRun {
-				if err == restic.ERROR_MESSAGE_TOKEN_EXPIRED {
+				if err.Error() == restic.ERROR_MESSAGE_TOKEN_EXPIRED.Error() {
 					if err = s.refreshStsTokens(ctx); err == nil {
 						continue
 					} else {
