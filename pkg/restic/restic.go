@@ -15,11 +15,16 @@ import (
 	"time"
 
 	"github.com/olekukonko/tablewriter"
+	"github.com/shirou/gopsutil/v4/disk"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	"olares.com/backups-sdk/pkg/constants"
 	"olares.com/backups-sdk/pkg/logger"
 	"olares.com/backups-sdk/pkg/utils"
+)
+
+var (
+	FreeLimit float64 = 85.00
 )
 
 type RESTIC_ERROR_MESSAGE string
@@ -56,7 +61,7 @@ const (
 	ERROR_MESSAGE_HOST_IS_DOWN                       RESTIC_ERROR_MESSAGE = "host is down"
 	ERROR_MESSAGE_HOST_IS_DOWN_MESSAGE               RESTIC_ERROR_MESSAGE = "SMB host down."
 	ERROR_MESSAGE_NO_SPACE_LEFT_ON_DEVICE            RESTIC_ERROR_MESSAGE = "no space left on device"
-	ERROR_MESSAGE_NO_SPACE_LEFT_ON_DEVICE_MESSAGE    RESTIC_ERROR_MESSAGE = "Insufficient storage."
+	ERROR_MESSAGE_NO_SPACE_LEFT_ON_DEVICE_MESSAGE    RESTIC_ERROR_MESSAGE = "Insufficient space on the target disk."
 	ERROR_MESSAGE_ACCESS_DENIED                      RESTIC_ERROR_MESSAGE = "Access Denied"
 	ERROR_MESSAGE_ACCESS_DENIED_MESSAGE              RESTIC_ERROR_MESSAGE = "Access denied. Please provide the correct access key."
 )
@@ -107,6 +112,7 @@ type ResticOptions struct {
 	LimitDownloadRate string
 	LimitUploadRate   string
 	DryRun            bool
+	LocalEndpoint     string
 
 	Operator                 string
 	BackupType               string
@@ -343,12 +349,24 @@ func (r *Restic) Backup(folder string, files []string, filePathPrefix string, ta
 	var continued bool
 
 	go func() {
+		ticker := time.NewTicker(8 * time.Second)
+		defer ticker.Stop()
+
 		for {
 			select {
 			case <-r.ctx.Done():
 				logger.Infof("[restic] backup canceled, traceId: %s", traceId)
 				errorMsg = ERROR_MESSAGE_BACKUP_CANCELED
 				return
+			case <-ticker.C:
+				if r.opt.LocalEndpoint != "" {
+					if checkErr := r.checkDiskSpace(r.opt.LocalEndpoint); checkErr != nil {
+						logger.Errorf("[restic] backup canceled, msg: %v", checkErr)
+						errorMsg = RESTIC_ERROR_MESSAGE(checkErr.Error())
+						c.Cancel()
+						return
+					}
+				}
 			case res, ok := <-c.Ch:
 				if !ok {
 					return
@@ -708,12 +726,22 @@ func (r *Restic) Restore(phase int, total int, snapshotId string, subfolder stri
 	var continued bool
 
 	go func() {
+		ticker := time.NewTicker(8 * time.Second)
+		defer ticker.Stop()
+
 		for {
 			select {
 			case <-r.ctx.Done():
 				logger.Infof("[restic] restore canceled")
 				errorMsg = ERROR_MESSAGE_RESTORE_CANCELED
 				return
+			case <-ticker.C:
+				if checkErr := r.checkDiskSpace(target); checkErr != nil {
+					logger.Errorf("[restic] restore canceled, msg: %v", checkErr)
+					errorMsg = RESTIC_ERROR_MESSAGE(checkErr.Error())
+					c.Cancel()
+					return
+				}
 			case res, ok := <-c.Ch:
 				if !ok {
 					return
@@ -936,6 +964,22 @@ func (r *Restic) formatErrorMessage(msg string) (RESTIC_ERROR_MESSAGE, bool) {
 	}
 
 	return errorMsg, continued
+}
+
+func (r *Restic) checkDiskSpace(path string) error {
+	usage, err := disk.Usage(path)
+	if err != nil {
+		logger.Errorf("[restic] check disk free space error: %v", err)
+		return err
+	}
+
+	logger.Debugf("[restic] check disk free space: %s, path: %s", usage.String(), path)
+
+	if usage.UsedPercent > FreeLimit {
+		return errors.New(ERROR_MESSAGE_NO_SPACE_LEFT_ON_DEVICE_MESSAGE.Error())
+	}
+
+	return nil
 }
 
 var messagePool *statusMessagePool

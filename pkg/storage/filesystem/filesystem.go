@@ -52,6 +52,7 @@ func (f *Filesystem) Backup(ctx context.Context, dryRun bool, progressCallback f
 		BackupType:               f.BackupType,
 		BackupAppTypeName:        f.BackupAppTypeName,
 		BackupFileTypeSourcePath: f.BackupFileTypeSourcePath,
+		LocalEndpoint:            f.Endpoint,
 		RepoEnvs:                 envs,
 	}
 
