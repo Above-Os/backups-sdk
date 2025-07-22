@@ -310,7 +310,7 @@ func (r *Restic) Backup(folder string, files []string, filePathPrefix string, ta
 			return nil, fmt.Errorf("backup app but files is empty")
 		}
 		for _, file := range filesPath {
-			cmds = append(cmds, "--files-from", file)
+			cmds = append(cmds, "--files-from-verbatim", file)
 		}
 	} else {
 		if folder != "" {
