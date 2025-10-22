@@ -959,6 +959,8 @@ func (r *Restic) formatErrorMessage(msg string) (RESTIC_ERROR_MESSAGE, bool) {
 		strings.Contains(msg, ERROR_MESSAGE_FILES_NOT_FOUND.Error()),
 		strings.Contains(msg, ERROR_MESSAGE_NO_SUCH_FILE_OR_DIRECTORY.Error()):
 		continued = true
+	case strings.Contains(msg, "does not exist, skipping"):
+		continued = true
 	default:
 		errorMsg = RESTIC_ERROR_MESSAGE(msg)
 	}
