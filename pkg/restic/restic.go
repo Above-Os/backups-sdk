@@ -1,10 +1,12 @@
 package restic
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"os/exec"
@@ -566,62 +568,6 @@ func (r *Restic) Unlock() (string, error) {
 	return sb.String(), nil
 }
 
-func (r *Restic) GetSnapshot(snapshotId string) (*Snapshot, error) {
-	var getCtx, cancel = context.WithCancel(r.ctx)
-	defer cancel()
-
-	r.addCommand([]string{"snapshots", PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS, snapshotId}).addExtended().addRequestTimeout()
-
-	opts := utils.CommandOptions{
-		Path: r.dir,
-		Args: r.args,
-		Envs: r.opt.RepoEnvs.Kv(),
-	}
-
-	c := utils.NewCommand(getCtx, opts)
-
-	var summary []*Snapshot
-	var errorMsg RESTIC_ERROR_MESSAGE
-
-	go func() {
-		for {
-			select {
-			case res, ok := <-c.Ch:
-				if !ok {
-					return
-				}
-				if res == nil || len(res) == 0 {
-					continue
-				}
-
-				var msg = string(res)
-				logger.Debugf("[restic] snapshots %s message: %s", r.opt.RepoName, msg)
-				if err := json.Unmarshal(res, &summary); err != nil {
-					errorMsg = RESTIC_ERROR_MESSAGE(string(msg))
-					c.Cancel()
-					return
-				}
-			case <-r.ctx.Done():
-				return
-			}
-		}
-	}()
-
-	_, err := c.Run()
-	if err != nil {
-		return nil, err
-	}
-	if errorMsg != "" {
-		return nil, fmt.Errorf(errorMsg.Error())
-	}
-
-	if summary == nil || len(summary) == 0 {
-		return nil, fmt.Errorf("snapshot %s not found", snapshotId)
-	}
-
-	return summary[0], nil
-}
-
 type SnapshotList []*Snapshot
 
 func (l SnapshotList) First() *Snapshot {
@@ -630,6 +576,10 @@ func (l SnapshotList) First() *Snapshot {
 
 func (l SnapshotList) Len() int {
 	return len(l)
+}
+
+func (l *SnapshotList) Append(s *Snapshot) {
+	*l = append(*l, s)
 }
 
 func (l SnapshotList) PrintTable() {
@@ -643,61 +593,202 @@ func (l SnapshotList) PrintTable() {
 	table.Render()
 }
 
+func (r *Restic) GetSnapshot(snapshotId string) (*Snapshot, error) {
+	var getCtx, cancel = context.WithCancel(r.ctx)
+	defer cancel()
+
+	r.addCommand([]string{"snapshots", PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS, snapshotId}).addExtended().addRequestTimeout()
+
+	cmd := exec.CommandContext(getCtx, r.dir, r.args...)
+	cmd.Env = append(os.Environ(), cmd.Env...)
+	for k, v := range r.opt.RepoEnvs.Kv() {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("stdout pipe error: %v", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("stderr pipe error: %v", err)
+	}
+
+	logger.Infof("[Cmd] %s", cmd.String())
+
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("cmd start error: %v", err)
+	}
+
+	var errorMsg RESTIC_ERROR_MESSAGE
+
+	go func() {
+		rd := bufio.NewReader(stderr)
+		tmp := make([]byte, 10*1024)
+		for {
+			n, e := rd.Read(tmp)
+			if n > 0 {
+				var msg = string(tmp[:n])
+				if strings.Contains(msg, "Fatal: ") {
+					errorMsg, _ = r.formatErrorMessage(msg)
+					break
+				}
+			}
+			if e != nil {
+				if !errors.Is(e, io.EOF) {
+					logger.Errorf("[Cmd][stderr] read error: %v", e)
+					errorMsg, _ = r.formatErrorMessage(e.Error())
+				}
+				break
+			}
+		}
+	}()
+
+	dec := json.NewDecoder(stdout)
+
+	tok, err := dec.Token()
+	if err != nil {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		if errorMsg != "" {
+			return nil, fmt.Errorf(errorMsg.Error())
+		}
+		return nil, fmt.Errorf("json start token error: %v", err)
+	}
+	if d, ok := tok.(json.Delim); !ok || d != '[' {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		if errorMsg != "" {
+			return nil, fmt.Errorf(errorMsg.Error())
+		}
+		return nil, errors.New("expected JSON array '['")
+	}
+
+	var snaps = new(SnapshotList)
+	for dec.More() {
+		var s *Snapshot
+		if err := dec.Decode(&s); err != nil {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+			return nil, fmt.Errorf("json decode snapshot error: %v", err)
+		}
+		snaps.Append(s)
+	}
+
+	if _, err := dec.Token(); err != nil {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		return nil, fmt.Errorf("json end token error: %v", err)
+	}
+
+	if errWait := cmd.Wait(); errWait != nil {
+		return nil, fmt.Errorf("wait error for command: %s, error: %v", cmd.String(), errWait)
+	}
+
+	if snaps.Len() == 0 {
+		return nil, fmt.Errorf("snapshot %s not found", snapshotId)
+	}
+
+	return snaps.First(), nil
+}
+
 func (r *Restic) GetSnapshots(tags []string) (*SnapshotList, error) {
 	var restoreCtx, cancel = context.WithCancel(r.ctx)
 	defer cancel()
 
 	r.addCommand([]string{"snapshots", PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS}).addTags(tags).addExtended().addRequestTimeout()
 
-	opts := utils.CommandOptions{
-		Path: r.dir,
-		Args: r.args,
-		Envs: r.opt.RepoEnvs.Kv(),
+	cmd := exec.CommandContext(restoreCtx, r.dir, r.args...)
+	cmd.Env = append(os.Environ(), cmd.Env...)
+	for k, v := range r.opt.RepoEnvs.Kv() {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	c := utils.NewCommand(restoreCtx, opts)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("stdout pipe error: %v", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("stderr pipe error: %v", err)
+	}
 
-	var summary *SnapshotList
+	logger.Infof("[Cmd] %s", cmd.String())
+
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("cmd start error: %v", err)
+	}
+
 	var errorMsg RESTIC_ERROR_MESSAGE
 
 	go func() {
+		rd := bufio.NewReader(stderr)
+		tmp := make([]byte, 10*1024)
 		for {
-			select {
-			case res, ok := <-c.Ch:
-				if !ok {
-					return
-				}
-				if res == nil || len(res) == 0 {
-					continue
-				}
-
-				var msg = string(res)
-				logger.Debugf("[restic] snapshots %s message: %s", r.opt.RepoName, msg)
+			n, e := rd.Read(tmp)
+			if n > 0 {
+				var msg = string(tmp[:n])
 				if strings.Contains(msg, "Fatal: ") {
 					errorMsg, _ = r.formatErrorMessage(msg)
-					return
+					break
 				}
-				if err := json.Unmarshal(res, &summary); err != nil {
-					errorMsg = RESTIC_ERROR_MESSAGE(r.trimError(err.Error()))
-					return
+			}
+			if e != nil {
+				if !errors.Is(e, io.EOF) {
+					logger.Errorf("[Cmd][stderr] read error: %v", e)
+					errorMsg, _ = r.formatErrorMessage(e.Error())
 				}
-			case <-r.ctx.Done():
-				return
+				break
 			}
 		}
 	}()
 
-	_, err := c.Run()
+	dec := json.NewDecoder(stdout)
+
+	tok, err := dec.Token()
 	if err != nil {
-		return nil, err
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		if errorMsg != "" {
+			return nil, fmt.Errorf(errorMsg.Error())
+		}
+		return nil, fmt.Errorf("json start token error: %v", err)
 	}
-	if errorMsg != "" {
-		return nil, fmt.Errorf(errorMsg.Error())
+	if d, ok := tok.(json.Delim); !ok || d != '[' {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		if errorMsg != "" {
+			return nil, fmt.Errorf(errorMsg.Error())
+		}
+		return nil, errors.New("expected JSON array '['")
 	}
-	if summary == nil || len(*summary) == 0 {
+
+	var snaps = new(SnapshotList)
+	for dec.More() {
+		var s *Snapshot
+		if err := dec.Decode(&s); err != nil {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+			return nil, fmt.Errorf("json decode snapshot error: %v", err)
+		}
+		snaps.Append(s)
+	}
+
+	if _, err := dec.Token(); err != nil {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		return nil, fmt.Errorf("json end token error: %v", err)
+	}
+
+	if errWait := cmd.Wait(); errWait != nil {
+		return nil, fmt.Errorf("wait error for command: %s, error: %v", cmd.String(), errWait)
+	}
+
+	if snaps.Len() == 0 {
 		return nil, fmt.Errorf("snapshots not found")
 	}
-	return summary, nil
+
+	return snaps, nil
 }
 
 func (r *Restic) Restore(phase int, total int, snapshotId string, subfolder string, target string, progressChan chan float64) (*RestoreSummaryOutput, error) {
