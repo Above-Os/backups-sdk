@@ -235,6 +235,62 @@ func (r *Restic) prune() (string, error) {
 	return string(output), nil
 }
 
+func (r *Restic) StatsMode(mode string) (*StatsContainer, error) {
+	var getCtx, cancel = context.WithCancel(r.ctx)
+	defer cancel()
+
+	r.addCommand([]string{"stats", "--mode", mode, PARAM_JSON_OUTPUT, PARAM_INSECURE_TLS}).addExtended().addRequestTimeout()
+
+	opts := utils.CommandOptions{
+		Path: r.dir,
+		Args: r.args,
+		Envs: r.opt.RepoEnvs.Kv(),
+	}
+
+	c := utils.NewCommand(getCtx, opts)
+
+	var stats *StatsContainer
+	var errorMsg RESTIC_ERROR_MESSAGE
+
+	go func() {
+		for {
+			select {
+			case res, ok := <-c.Ch:
+				if !ok {
+					return
+				}
+				if res == nil || len(res) == 0 {
+					continue
+				}
+
+				var msg = string(res)
+				logger.Debugf("[restic] stats %s message: %s", r.opt.RepoName, msg)
+				if err := json.Unmarshal(res, &stats); err != nil {
+					errorMsg = RESTIC_ERROR_MESSAGE(string(msg))
+					c.Cancel()
+					return
+				}
+			case <-r.ctx.Done():
+				return
+			}
+		}
+	}()
+
+	_, err := c.Run()
+	if err != nil {
+		return nil, err
+	}
+	if errorMsg != "" {
+		return nil, fmt.Errorf(errorMsg.Error())
+	}
+
+	if stats == nil {
+		return nil, fmt.Errorf("stats %s not found", r.opt.RepoName)
+	}
+
+	return stats, nil
+}
+
 func (r *Restic) Stats() (*StatsContainer, error) {
 	var getCtx, cancel = context.WithCancel(r.ctx)
 	defer cancel()

@@ -111,6 +111,11 @@ func (d *BaseHandler) Backup(ctx context.Context, dryRun bool, progressCallback 
 		return
 	}
 
+	restoreSize, _ := r.StatsMode("restore-size")
+	if restoreSize != nil {
+		backupSummary.RestoreSize = restoreSize.TotalSize
+	}
+
 	// var currentBackupType = backupType
 	// if backupType == constants.FullyBackup {
 	// 	var snapshots *restic.SnapshotList
