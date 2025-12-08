@@ -169,6 +169,11 @@ func (s *Space) Backup(ctx context.Context, dryRun bool, progressCallback func(p
 		// 	}
 		// }
 
+		restoreSize, _ := r.StatsMode("restore-size")
+		if restoreSize != nil {
+			backupSummary.RestoreSize = restoreSize.TotalSize
+		}
+
 		logger.Infof("Backup successful, name: %s, result: %s, traceId: %s", s.RepoName, utils.ToJSON(backupSummary), traceId)
 		// if err := s.sendBackup(backupSummary, currentBackupType, opts.RepoEnvs.RESTIC_REPOSITORY); err != nil {
 		// 	logger.Errorf("send backup to cloud error: %v", err)

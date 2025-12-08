@@ -114,6 +114,7 @@ type SummaryOutput struct {
 	TotalDuration       float64 `json:"total_duration"` // in seconds
 	SnapshotID          string  `json:"snapshot_id,omitempty"`
 	DryRun              bool    `json:"dry_run,omitempty"`
+	RestoreSize         uint64  `json:"restore_size"`
 }
 
 type Snapshot struct {
