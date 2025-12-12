@@ -25,10 +25,6 @@ import (
 	"olares.com/backups-sdk/pkg/utils"
 )
 
-var (
-	FreeLimit float64 = 85.00
-)
-
 type RESTIC_ERROR_MESSAGE string
 
 const (
@@ -429,7 +425,7 @@ func (r *Restic) Backup(folder string, files []string, filePathPrefix string, ta
 				if !ok {
 					return
 				}
-				if res == nil || len(res) == 0 {
+				if len(res) == 0 {
 					continue
 				}
 				status := messagePool.Get()
@@ -893,7 +889,7 @@ func (r *Restic) Restore(phase int, total int, snapshotId string, subfolder stri
 				if !ok {
 					return
 				}
-				if res == nil || len(res) == 0 {
+				if len(res) == 0 {
 					continue
 				}
 
@@ -1122,9 +1118,9 @@ func (r *Restic) checkDiskSpace(path string) error {
 		return err
 	}
 
-	logger.Debugf("[restic] check disk free space: %s, path: %s", usage.String(), path)
+	logger.Debugf("[restic] check disk free space: %s, path: %s, limit: %d", usage.String(), path, constants.FreeSpaceLimit)
 
-	if usage.UsedPercent > FreeLimit {
+	if usage.Free < constants.FreeSpaceLimit {
 		return errors.New(ERROR_MESSAGE_NO_SPACE_LEFT_ON_DEVICE_MESSAGE.Error())
 	}
 
