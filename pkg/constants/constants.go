@@ -1,5 +1,10 @@
 package constants
 
+import (
+	"os"
+	"strconv"
+)
+
 const (
 	DefaultBaseDir = ".olares"
 	DefaultLogsDir = "logs"
@@ -40,3 +45,27 @@ const (
 	BackupTypeApp  = "app"
 	BackupTypeFile = "file"
 )
+
+var (
+	FreeSpaceLimit uint64
+)
+
+const (
+	DefaultFreeSpaceMB uint64 = 1024 // unit MB
+)
+
+func init() {
+	var err error
+	var tmpFreeFreeSpaceLimit uint64
+	envFreeSpaceLimitMB := os.Getenv("FREE_SPACE_LIMIT_MB")
+	if envFreeSpaceLimitMB == "" {
+		tmpFreeFreeSpaceLimit = DefaultFreeSpaceMB
+	} else {
+		tmpFreeFreeSpaceLimit, err = strconv.ParseUint(envFreeSpaceLimitMB, 10, 64)
+		if err != nil {
+			tmpFreeFreeSpaceLimit = DefaultFreeSpaceMB
+		}
+	}
+
+	FreeSpaceLimit = tmpFreeFreeSpaceLimit * 1024 * 1024
+}
