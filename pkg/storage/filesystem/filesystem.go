@@ -60,6 +60,9 @@ func (f *Filesystem) Backup(ctx context.Context, dryRun bool, progressCallback f
 
 	f.BaseHandler.SetOptions(opts)
 	backupSummary, err = f.BaseHandler.Backup(ctx, dryRun, progressCallback)
+	if err = utils.Chmod(storageInfo.Url); err != nil {
+		logger.Warnf("fs backup chmod error: %v, path: %s", err, storageInfo.Url)
+	}
 
 	if err != nil {
 		files, e := f.getTmpFiles(storageInfo.Url)
@@ -186,12 +189,17 @@ func (f *Filesystem) FormatRepository() (storageInfo *model.StorageInfo, err err
 }
 
 func (f *Filesystem) setRepoDir() error {
+	var rootPath = path.Join(f.Endpoint, constants.OlaresStorageDefaultPrefix)
+	if !utils.IsExist(rootPath) {
+		if err := utils.CreateDir(rootPath); err != nil {
+			return errors.New("Failed to create backup folder. Please check your permissions.")
+		}
+	}
 	var p = path.Join(f.Endpoint, constants.OlaresStorageDefaultPrefix, fmt.Sprintf("%s-%s", f.RepoName, f.RepoId))
 	if !utils.IsExist(p) {
 		if err := utils.CreateDir(p); err != nil {
 			return errors.New("Failed to create backup folder. Please check your permissions.")
 		}
-		return nil
 	}
 	return nil
 }

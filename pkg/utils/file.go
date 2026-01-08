@@ -7,6 +7,11 @@ import (
 	"os/user"
 )
 
+func Chmod(p string) error {
+	cmd := exec.Command("chown", "-R", "1000:1000", p)
+	return cmd.Run()
+}
+
 func GetHomeDir() string {
 	user, err := user.Current()
 	if err != nil {
@@ -22,6 +27,7 @@ func CreateDir(path string) error {
 		if err != nil {
 			return err
 		}
+		return os.Chown(path, 1000, 1000)
 	}
 	return nil
 }

@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -101,7 +102,11 @@ func GetFilesPrefixPath(tags []string) ([]string, error) {
 
 func Chmod(p string) error {
 	if utils.IsExist(p) {
-		return os.Chmod(p, 0755)
+		chmodErr := os.Chmod(p, 0755)
+		chownErr := os.Chown(p, 1000, 1000)
+		if chmodErr != nil || chownErr != nil {
+			return errors.Join(chmodErr, chownErr)
+		}
 	}
 	return utils.CreateDir(p)
 }
