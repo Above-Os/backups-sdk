@@ -109,7 +109,7 @@ func (s *Space) Stats(ctx context.Context) (*restic.StatsContainer, error) {
 		RegionId:  s.RegionId,
 		RepoEnvs:  envs,
 	}
-	logger.Debugf("space stats env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("space stats env vars")
 
 	r, err := restic.NewRestic(ctx, opts)
 	if err != nil {

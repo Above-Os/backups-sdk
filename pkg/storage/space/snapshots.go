@@ -34,7 +34,7 @@ func (s *Space) Snapshots(ctx context.Context) (*restic.SnapshotList, error) {
 		Operator:   s.Operator,
 		RepoEnvs:   envs,
 	}
-	logger.Debugf("space snapshots env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("space snapshots env vars")
 
 	r, err := restic.NewRestic(context.Background(), opts)
 	if err != nil {
@@ -75,7 +75,7 @@ func (s *Space) GetSnapshot(ctx context.Context, snapshotId string) (*restic.Sna
 		Operator:   s.Operator,
 		RepoEnvs:   envs,
 	}
-	logger.Debugf("space snapshot env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("space snapshot env vars")
 
 	r, err := restic.NewRestic(context.Background(), opts)
 	if err != nil {
