@@ -58,7 +58,7 @@ func (s *Aws) Backup(ctx context.Context, dryRun bool, progressCallback func(per
 		RepoEnvs:                 envs,
 	}
 
-	logger.Debugf("s3 backup env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("s3 backup env vars")
 
 	s.BaseHandler.SetOptions(opts)
 
@@ -81,7 +81,7 @@ func (s *Aws) Restore(ctx context.Context, progressCallback func(percentDone flo
 		LimitDownloadRate: s.LimitDownloadRate,
 	}
 
-	logger.Debugf("s3 restore env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("s3 restore env vars")
 
 	s.BaseHandler.SetOptions(opts)
 	return s.BaseHandler.Restore(ctx, progressCallback)
@@ -100,7 +100,7 @@ func (s *Aws) Snapshots(ctx context.Context) (*restic.SnapshotList, error) {
 		RepoEnvs: envs,
 	}
 
-	logger.Debugf("s3 snapshots env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("s3 snapshots env vars")
 
 	s.BaseHandler.SetOptions(opts)
 	return s.BaseHandler.Snapshots(ctx)
@@ -119,7 +119,7 @@ func (s *Aws) GetSnapshot(ctx context.Context, snapshotId string) (*restic.Snaps
 		RepoEnvs: envs,
 	}
 
-	logger.Debugf("s3 snapshot env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("s3 snapshot env vars")
 
 	s.BaseHandler.SetOptions(opts)
 	return s.BaseHandler.GetSnapshot(ctx, snapshotId)
@@ -138,7 +138,7 @@ func (s *Aws) Stats(ctx context.Context) (*restic.StatsContainer, error) {
 		RepoEnvs: envs,
 	}
 
-	logger.Debugf("s3 stats env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("s3 stats env vars")
 
 	s.BaseHandler.SetOptions(opts)
 	return s.BaseHandler.Stats(ctx)

@@ -58,7 +58,7 @@ func (s *Space) Restore(ctx context.Context, progressCallback func(percentDone f
 			LimitDownloadRate: s.LimitDownloadRate,
 		}
 
-		logger.Debugf("space restore env vars: %s", utils.Base64encode([]byte(envs.String())))
+		logger.Debug("space restore env vars")
 
 		var r *restic.Restic
 		r, err = restic.NewRestic(ctx, opts)

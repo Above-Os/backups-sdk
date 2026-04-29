@@ -62,7 +62,7 @@ func (c *TencentCloud) Backup(ctx context.Context, dryRun bool, progressCallback
 		RepoEnvs:                 envs,
 	}
 
-	logger.Debugf("cos backup env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("cos backup env vars")
 
 	c.BaseHandler.SetOptions(opts)
 
@@ -88,7 +88,7 @@ func (c *TencentCloud) Restore(ctx context.Context, progressCallback func(percen
 		LimitDownloadRate: c.LimitDownloadRate,
 	}
 
-	logger.Debugf("cos restore env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("cos restore env vars")
 
 	c.BaseHandler.SetOptions(opts)
 	return c.BaseHandler.Restore(ctx, progressCallback)
@@ -109,7 +109,7 @@ func (c *TencentCloud) Snapshots(ctx context.Context) (*restic.SnapshotList, err
 		RepoEnvs:  envs,
 	}
 
-	logger.Debugf("cos snapshots env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("cos snapshots env vars")
 
 	c.BaseHandler.SetOptions(opts)
 	return c.BaseHandler.Snapshots(ctx)
@@ -130,7 +130,7 @@ func (c *TencentCloud) GetSnapshot(ctx context.Context, snapshotId string) (*res
 		RepoEnvs:  envs,
 	}
 
-	logger.Debugf("cos snapshots env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("cos snapshots env vars")
 
 	c.BaseHandler.SetOptions(opts)
 	return c.BaseHandler.GetSnapshot(ctx, snapshotId)
@@ -151,7 +151,7 @@ func (c *TencentCloud) Stats(ctx context.Context) (*restic.StatsContainer, error
 		RepoEnvs:  envs,
 	}
 
-	logger.Debugf("cos stats env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("cos stats env vars")
 
 	c.BaseHandler.SetOptions(opts)
 	return c.BaseHandler.Stats(ctx)

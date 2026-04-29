@@ -68,7 +68,7 @@ func (s *Space) Backup(ctx context.Context, dryRun bool, progressCallback func(p
 			LimitUploadRate:          s.LimitUploadRate,
 		}
 
-		logger.Infof("space backup env vars: %s, traceId: %s", utils.Base64encode([]byte(envs.String())), traceId)
+		logger.Infof("space backup traceId: %s", traceId)
 
 		var r *restic.Restic
 		r, err = restic.NewRestic(ctx, opts)

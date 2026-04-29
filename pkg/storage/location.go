@@ -151,7 +151,7 @@ func (h *BaseHandler) Restore(ctx context.Context, progressCallback func(percent
 	var totalBytes, totalBytesTmp uint64
 	var err error
 
-	logger.Debugf("restore env vars: %s, snapshotId: %s", utils.Base64encode([]byte(h.opts.RepoEnvs.String())), snapshotId)
+	logger.Debugf("restore snapshotId: %s", snapshotId)
 
 	var re *restic.Restic
 	re, err = restic.NewRestic(ctx, h.opts)
@@ -230,7 +230,7 @@ func (h *BaseHandler) Restore(ctx context.Context, progressCallback func(percent
 }
 
 func (h *BaseHandler) GetSnapshot(ctx context.Context, snapshotId string) (*restic.SnapshotList, error) {
-	logger.Debugf("snapshot env vars: %s", utils.Base64encode([]byte(h.opts.RepoEnvs.String())))
+	logger.Debug("snapshot env vars")
 
 	r, err := restic.NewRestic(ctx, h.opts)
 	if err != nil {
@@ -249,7 +249,7 @@ func (h *BaseHandler) GetSnapshot(ctx context.Context, snapshotId string) (*rest
 }
 
 func (h *BaseHandler) Snapshots(ctx context.Context) (*restic.SnapshotList, error) {
-	logger.Debugf("snapshots env vars: %s", utils.Base64encode([]byte(h.opts.RepoEnvs.String())))
+	logger.Debug("snapshots env")
 
 	r, err := restic.NewRestic(ctx, h.opts)
 	if err != nil {
@@ -268,7 +268,7 @@ func (h *BaseHandler) Snapshots(ctx context.Context) (*restic.SnapshotList, erro
 }
 
 func (h *BaseHandler) Stats(ctx context.Context) (*restic.StatsContainer, error) {
-	logger.Debugf("stats env vars: %s", utils.Base64encode([]byte(h.opts.RepoEnvs.String())))
+	logger.Debug("stats env vars")
 
 	r, err := restic.NewRestic(ctx, h.opts)
 	if err != nil {

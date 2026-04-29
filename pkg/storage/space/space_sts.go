@@ -66,7 +66,7 @@ func (s *StsToken) RefreshStsToken(ctx context.Context, cloudApiMirror string) e
 	queryResp := result
 
 	if queryResp.Data == nil {
-		logger.Errorf("get sts token invalid, code: %d, msg: %s, params: %s", queryResp.Code, queryResp.Message, data)
+		logger.Errorf("get sts token invalid, code: %d, msg: %s", queryResp.Code, queryResp.Message)
 		return errors.WithStack(fmt.Errorf("get sts token invalid, code: %d, message: %s", queryResp.Code, queryResp.Message))
 	}
 

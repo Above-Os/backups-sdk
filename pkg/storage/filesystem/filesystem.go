@@ -56,7 +56,7 @@ func (f *Filesystem) Backup(ctx context.Context, dryRun bool, progressCallback f
 		RepoEnvs:                 envs,
 	}
 
-	logger.Debugf("fs backup env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("fs backup env vars")
 
 	f.BaseHandler.SetOptions(opts)
 	backupSummary, err = f.BaseHandler.Backup(ctx, dryRun, progressCallback)
@@ -96,7 +96,7 @@ func (f *Filesystem) Restore(ctx context.Context, progressCallback func(percentD
 		Path:       f.Path,
 	}
 
-	logger.Debugf("fs restore env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("fs restore env vars")
 
 	f.BaseHandler.SetOptions(opts)
 	return f.BaseHandler.Restore(ctx, progressCallback)
@@ -115,7 +115,7 @@ func (f *Filesystem) Snapshots(ctx context.Context) (*restic.SnapshotList, error
 		RepoEnvs: envs,
 	}
 
-	logger.Debugf("fs snapshots env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("fs snapshots env vars")
 
 	f.BaseHandler.SetOptions(opts)
 	return f.BaseHandler.Snapshots(ctx)
@@ -134,7 +134,7 @@ func (f *Filesystem) GetSnapshot(ctx context.Context, snapshotId string) (*resti
 		RepoEnvs: envs,
 	}
 
-	logger.Debugf("fs snapshot env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("fs snapshot env vars")
 
 	f.BaseHandler.SetOptions(opts)
 	return f.BaseHandler.GetSnapshot(ctx, snapshotId)
@@ -153,7 +153,7 @@ func (f *Filesystem) Stats(ctx context.Context) (*restic.StatsContainer, error) 
 		RepoEnvs: envs,
 	}
 
-	logger.Debugf("fs stats env vars: %s", utils.Base64encode([]byte(envs.String())))
+	logger.Debug("fs stats env vars")
 
 	f.BaseHandler.SetOptions(opts)
 	return f.BaseHandler.Stats(ctx)
